@@ -24,6 +24,10 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* List of processes that are asleep. The list must always be
+   sorted in ascending order. */
+static struct list sleep_list;
+
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -71,6 +75,19 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
+/* Function that will ensure that the list remains in ascending order
+   of sleep timer ticks; see list_less_func in lib/kernel/list.h. */
+static bool
+sleep_list_less_func (const struct list_elem *a,
+                      const struct list_elem *b,
+                      void *aux UNUSED)
+{
+  struct thread *t_a = list_entry(a, struct thread, elem);
+  struct thread *t_b = list_entry(b, struct thread, elem);
+
+  return t_a->sleep_ticks < t_b->sleep_ticks;
+}
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -91,6 +108,7 @@ thread_init (void)
 
   lock_init (&tid_lock);
   list_init (&ready_list);
+  list_init (&sleep_list);
   list_init (&all_list);
 
   /* Set up a thread structure for the running thread. */
@@ -240,6 +258,41 @@ thread_unblock (struct thread *t)
   list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
+}
+
+/* Puts the current thread to sleep until approximately TICKS timer ticks. */
+void
+thread_sleep (int64_t ticks)
+{
+  struct thread *cur = thread_current ();
+  enum intr_level old_level;
+
+  cur->sleep_ticks = ticks;
+  old_level = intr_disable ();
+  list_insert_ordered (&sleep_list, &cur->elem, sleep_list_less_func, NULL);
+  thread_block ();
+  intr_set_level (old_level);
+}
+
+/* Wakes all asleep threads with sleep ticks prior to TICKS timer ticks. */
+void
+thread_wake (int64_t ticks)
+{
+  struct list_elem *e;
+  struct thread *t;
+  enum intr_level old_level;
+
+  while (!list_empty (&sleep_list))
+    {
+      e = list_front (&sleep_list);
+      t = list_entry (e, struct thread, elem);
+      if (t->sleep_ticks > ticks)
+        break;
+      old_level = intr_disable ();
+      list_pop_front (&sleep_list);
+      thread_unblock (t);
+      intr_set_level (old_level);
+    }
 }
 
 /* Returns the name of the running thread. */
