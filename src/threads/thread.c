@@ -25,7 +25,7 @@
 static struct list ready_list;
 
 /* List of processes that are asleep. The list must always be
-   sorted in ascending order. */
+   sorted in ascending order of sleep ticks. */
 static struct list sleep_list;
 
 /* List of all processes.  Processes are added to this list
