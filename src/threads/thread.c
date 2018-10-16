@@ -21,7 +21,8 @@
 #define THREAD_MAGIC 0xcd6abf4b
 
 /* List of processes in THREAD_READY state, that is, processes
-   that are ready to run but not actually running. */
+   that are ready to run but not actually running. The list must
+   always be sorted in descending order of priority. */
 static struct list ready_list;
 
 /* List of processes that are asleep. The list must always be
@@ -86,6 +87,21 @@ sleep_list_less_func (const struct list_elem *a,
   struct thread *t_b = list_entry(b, struct thread, elem);
 
   return t_a->sleep_ticks < t_b->sleep_ticks;
+}
+
+/* Function that will ensure that the list remains in descending order
+   of thread priorities; see list_less_func in lib/kernel/list.h. */
+static bool
+ready_list_less_func (const struct list_elem *a,
+                      const struct list_elem *b,
+                      void *aux UNUSED)
+{
+  struct thread *t_a = list_entry(a, struct thread, elem);
+  struct thread *t_b = list_entry(b, struct thread, elem);
+  int p_a = t_a->priority > t_a->donated_priority ? t_a->priority : t_a->donated_priority;
+  int p_b = t_b->priority > t_b->donated_priority ? t_b->priority : t_b->donated_priority;
+
+  return p_a > p_b;
 }
 
 /* Initializes the threading system by transforming the code
@@ -219,6 +235,11 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  /* Yield the CPU if the current thread no longer have the
+     highest priority. */
+  if (t->priority > thread_current ()->priority)
+    thread_yield ();
+
   return tid;
 }
 
@@ -255,7 +276,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered (&ready_list, &t->elem, ready_list_less_func, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -361,7 +382,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered (&ready_list, &cur->elem, ready_list_less_func, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -388,14 +409,38 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  enum intr_level old_level;
+  struct thread *t;
+  int p;
+
+  old_level = intr_disable();
   thread_current ()->priority = new_priority;
+
+  /* Check the priority of the thread at the front of the ready
+     list and yield the CPU if the current thread no longer have
+     the highest priority. */
+  if (!list_empty(&ready_list))
+    {
+      t = list_entry (list_front (&ready_list), struct thread, elem);
+      p = thread_get_priority();
+      if (p < t->priority || p < t->donated_priority)
+        thread_yield();
+    }
+  intr_set_level(old_level);
 }
 
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) 
 {
-  return thread_current ()->priority;
+  struct thread *cur = thread_current ();
+
+  /* If the thread's donated priority is higher, we want to
+     return that instead of the original priority. */
+  if (cur->priority < cur->donated_priority)
+    return cur->donated_priority;
+
+  return cur->priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -515,6 +560,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->donated_priority = 0;
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
