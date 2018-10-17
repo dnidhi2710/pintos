@@ -258,6 +258,12 @@ thread_block (void)
   thread_current ()->status = THREAD_BLOCKED;
   schedule ();
 }
+/*Yield the current thread if it's priority is less than the ready queue*/
+void thread_preempt(void){
+
+  if (!list_empty (&ready_list) && thread_current ()->priority < list_entry (list_front (&ready_list), struct thread, elem)->priority)
+      thread_yield ();
+}
 
 /* Transitions a blocked thread T to the ready-to-run state.
    This is an error if T is not blocked.  (Use thread_yield() to
