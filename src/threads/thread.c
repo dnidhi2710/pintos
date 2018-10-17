@@ -449,6 +449,14 @@ thread_get_priority (void)
   return cur->priority;
 }
 
+void priority_donate(void){
+  struct thread *t = list_entry (list_front (&ready_list), struct thread, elem);
+  if(t->priority < thread_current()->priority){
+      t->donated_priority = thread_current()->priority;
+      thread_unblock (t);
+  }
+}
+
 /* Sets the current thread's nice value to NICE. */
 void
 thread_set_nice (int nice UNUSED) 
