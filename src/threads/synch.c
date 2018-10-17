@@ -32,6 +32,21 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+/* Function that will ensure that the list remains in descending order
+   of thread priorities; see list_less_func in lib/kernel/list.h. */
+static bool
+ready_list_less_func (const struct list_elem *a,
+                      const struct list_elem *b,
+                      void *aux UNUSED)
+{
+  struct thread *t_a = list_entry(a, struct thread, elem);
+  struct thread *t_b = list_entry(b, struct thread, elem);
+  int p_a = t_a->priority > t_a->donated_priority ? t_a->priority : t_a->donated_priority;
+  int p_b = t_b->priority > t_b->donated_priority ? t_b->priority : t_b->donated_priority;
+
+  return p_a > p_b;
+}
+
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -68,7 +83,7 @@ sema_down (struct semaphore *sema)
   old_level = intr_disable ();
   while (sema->value == 0) 
     {
-      list_push_back (&sema->waiters, &thread_current ()->elem);
+      list_insert_ordered (&sema->waiters, &thread_current ()->elem,ready_list_less_func,NULL);
       thread_block ();
     }
   sema->value--;
