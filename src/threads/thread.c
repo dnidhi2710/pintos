@@ -237,8 +237,7 @@ thread_create (const char *name, int priority,
 
   /* Yield the CPU if the current thread no longer have the
      highest priority. */
-  if (t->priority > thread_current ()->priority)
-    thread_yield ();
+  thread_preempt();
 
   return tid;
 }
@@ -449,12 +448,12 @@ thread_get_priority (void)
   return cur->priority;
 }
 
-void priority_donate(struct semaphore *sema){
+void priority_donate(struct semaphore1 *sema){
   if (!list_empty (&sema->waiters)) {
-    struct thread *t = list_entry(list_pop_front(&sema->waiters),struct thread,elem)
-    if(t->priority > thread_current()->priority){
-      thread_current()->donated_priority = t->priority;
-      thread_unblock (t);
+    struct thread *t = list_entry(list_pop_front(&sema->waiters),struct thread,elem);
+    if(t->priority < thread_current()->priority){
+      t->donated_priority = thread_current()->priority;
+      thread_unblock(t);
     }
   }
 }

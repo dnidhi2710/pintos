@@ -104,13 +104,11 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
   };
 
-/* A counting semaphore. */
- struct semaphore 
+  struct semaphore1 
   {
     unsigned value;             /* Current value. */
     struct list waiters;        /* List of waiting threads. */
   };
-
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -150,5 +148,5 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 void thread_preempt(void);
-void priority_donate(struct semaphore *sema);
+void priority_donate(struct semaphore1 * );
 #endif /* threads/thread.h */
