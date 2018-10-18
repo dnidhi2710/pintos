@@ -125,7 +125,7 @@ sema_up (struct semaphore *sema)
 {
   enum intr_level old_level;
   ASSERT (sema != NULL);
-  struct thread *ready;
+
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) {
    // list_sort (&sema->waiters, ready_list_less_func, NULL);
@@ -213,12 +213,20 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
+  
+  check_for_donation(&lock);
   sema_down (&lock->semaphore);
-  //priority_donate(&lock->semaphore);
+  wakeup_next_waiting(&lock->semaphore);
   lock->holder = thread_current ();
 }
 
+void check_for_donation(struct lock *lock){
+    printf("thread_crrent %d",thread_current()->priority);
+    printf("lock holder %d",lock->holder->priority);
+    if(thread_current()->priority > lock->holder->priority){
+	lock->holder->donated_priority = thread_current()->priority;
+    }
+}
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
    thread.

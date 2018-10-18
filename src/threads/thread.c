@@ -232,6 +232,7 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+  check_prio(t); 
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -240,6 +241,12 @@ thread_create (const char *name, int priority,
   thread_preempt();
 
   return tid;
+}
+
+void check_prio(struct thread *t){
+    if(t->priority > thread_current()-> priority){
+        thread_yield();
+    }
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -258,8 +265,7 @@ thread_block (void)
   schedule ();
 }
 /*Yield the current thread if it's priority is less than the ready queue*/
-void thread_preempt(void){
-
+void thread_preempt(void){ 
   if (!list_empty (&ready_list) && thread_current ()->priority < list_entry (list_front (&ready_list), struct thread, elem)->priority)
       thread_yield ();
 }
@@ -428,6 +434,7 @@ thread_set_priority (int new_priority)
     {
       t = list_entry (list_front (&ready_list), struct thread, elem);
       p = thread_get_priority();
+      printf("%d",p);
       if (p < t->priority || p < t->donated_priority)
         thread_yield();
     }
@@ -448,13 +455,10 @@ thread_get_priority (void)
   return cur->priority;
 }
 
-void priority_donate(struct semaphore1 *sema){
+void wakeup_next_waiting(struct semaphore1 *sema){
   if (!list_empty (&sema->waiters)) {
     struct thread *t = list_entry(list_pop_front(&sema->waiters),struct thread,elem);
-    if(t->priority < thread_current()->priority){
-      t->donated_priority = thread_current()->priority;
-      thread_unblock(t);
-    }
+    thread_unblock(t);
   }
 }
 
