@@ -453,14 +453,15 @@ void wakeup_next_waiting(struct semaphore1 *sema){
   }
 }
 
-void check_for_donation(struct semaphore *sema){
-    struct thread *holder = list_entry (list_pop_front (&sema->waiters), struct thread, elem);
-    //struct thread *holder = &lock->holder;
+void check_for_donation(struct lock *lock){
+    //struct thread *holder = list_entry (list_pop_front (&sema->waiters), struct thread, elem);
+    struct thread *holder = &lock->holder;
+    struct thread *main = list_entry (list_front (&ready_list), struct thread, elem);
     printf("thread_in ready %d", holder->priority);
-    printf("thread_current %d", thread_current()->priority);
-    if(thread_current()->priority < holder->priority){
-    	  thread_current()->donated_priority = holder->priority;
-    }
+    printf("main %d", main->priority);
+   // if(thread_current()->priority < holder->priority){
+   // 	  thread_current()->donated_priority = holder->priority;
+   // }
 }
 
 /* Sets the current thread's nice value to NICE. */
