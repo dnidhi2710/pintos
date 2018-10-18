@@ -232,21 +232,13 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
-  check_prio(t); 
   /* Add to run queue. */
   thread_unblock (t);
-
   /* Yield the CPU if the current thread no longer have the
      highest priority. */
   thread_preempt();
 
   return tid;
-}
-
-void check_prio(struct thread *t){
-    if(t->priority > thread_current()-> priority){
-        thread_yield();
-    }
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -460,6 +452,15 @@ void wakeup_next_waiting(struct semaphore1 *sema){
     struct thread *t = list_entry(list_pop_front(&sema->waiters),struct thread,elem);
     thread_unblock(t);
   }
+}
+
+void check_for_donation(struct lock *lock){
+    struct thread *ready = list_entry (list_pop_front (&ready_list), struct thread, elem);
+    printf("thread_crrent %d",thread_current()->priority);
+    printf("thread_in ready %d", ready->priority);
+    if(thread_current()->priority > lock->holder->priority){
+    	  lock->holder->donated_priority = thread_current()->priority;
+    }
 }
 
 /* Sets the current thread's nice value to NICE. */

@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -149,4 +150,5 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 void thread_preempt(void);
 void wakeup_next_waiting(struct semaphore1 * );
+void check_for_donation(struct lock *);
 #endif /* threads/thread.h */

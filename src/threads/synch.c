@@ -220,13 +220,6 @@ lock_acquire (struct lock *lock)
   lock->holder = thread_current ();
 }
 
-void check_for_donation(struct lock *lock){
-    printf("thread_crrent %d",thread_current()->priority);
-    printf("lock holder %d",lock->holder->priority);
-    if(thread_current()->priority > lock->holder->priority){
-	lock->holder->donated_priority = thread_current()->priority;
-    }
-}
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
    thread.
