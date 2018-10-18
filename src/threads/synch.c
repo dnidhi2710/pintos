@@ -253,12 +253,24 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
-  thread_current()->donated_priority = 0;
+  
+  revert_donation();
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
 
+void revert_donation(){
+  if(list_size(thread_current()->donations)>1){
+     list_pop_front(thread_current()->donations);
+     int don =  list_front(thread_current()->donations)
+     thread_current()->donated_priority = don;
+  }else{
+    if(list_size(thread_current()->donations)==1){
+        list_pop_front(thread_current()->donations);
+    }
+    thread_current()->donated_priority = 0;
+  }
+}
 /* Returns true if the current thread holds LOCK, false
    otherwise.  (Note that testing whether some other thread holds
    a lock would be racy.) */

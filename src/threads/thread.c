@@ -456,7 +456,8 @@ void wakeup_next_waiting(struct semaphore1 *sema){
 void check_for_donation(){
     struct thread *main = list_entry (list_front (&ready_list), struct thread, elem);
     if(thread_current()->priority > main->priority){
-    	   main->donated_priority = thread_current()->priority ;
+        list_push_front(main->donations(),thread_current()->priority);
+    	  main->donated_priority = thread_current()->priority ;
     }
 }
 
