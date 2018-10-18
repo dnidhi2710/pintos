@@ -426,7 +426,6 @@ thread_set_priority (int new_priority)
     {
       t = list_entry (list_front (&ready_list), struct thread, elem);
       p = thread_get_priority();
-      printf("%d",p);
       if (p < t->priority || p < t->donated_priority)
         thread_yield();
     }
@@ -455,11 +454,10 @@ void wakeup_next_waiting(struct semaphore1 *sema){
 }
 
 void check_for_donation(struct lock *lock){
-    struct thread *ready = list_entry (list_pop_front (&ready_list), struct thread, elem);
-    printf("thread_crrent %d",thread_current()->priority);
+    struct thread *ready = list_entry (list_pop_front (&lock->semaphore->waiters), struct thread, elem);
     printf("thread_in ready %d", ready->priority);
-    if(thread_current()->priority > lock->holder->priority){
-    	  lock->holder->donated_priority = thread_current()->priority;
+    if(thread_current()->priority < ready->priority){
+    	  thread_current()->donated_priority = readt->priority;
     }
 }
 
