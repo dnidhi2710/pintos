@@ -215,7 +215,7 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
   
   sema_down (&lock->semaphore);
-  check_for_donation(&lock);
+  check_for_donation(&lock->semaphore);
   wakeup_next_waiting(&lock->semaphore);
   lock->holder = thread_current ();
 }

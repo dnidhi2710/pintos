@@ -453,11 +453,11 @@ void wakeup_next_waiting(struct semaphore1 *sema){
   }
 }
 
-void check_for_donation(struct lock *lock){
-    struct thread *ready = list_entry (list_pop_front (&lock->semaphore->waiters), struct thread, elem);
+void check_for_donation(struct semaphore1 *sema){
+    struct thread *ready = list_entry (list_pop_front (&sema->waiters), struct thread, elem);
     printf("thread_in ready %d", ready->priority);
     if(thread_current()->priority < ready->priority){
-    	  thread_current()->donated_priority = readt->priority;
+    	  thread_current()->donated_priority = ready->priority;
     }
 }
 
