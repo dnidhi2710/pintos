@@ -28,8 +28,6 @@ static struct list ready_list;
 /* List of processes that are asleep. The list must always be
    sorted in ascending order of sleep ticks. */
 static struct list sleep_list;
-
-static struct list donations;
    
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
@@ -128,7 +126,6 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&sleep_list);
   list_init (&all_list);
-  list_init (&donations);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -466,16 +463,16 @@ void check_for_donation(){
         t->previous_priority = main_thread->donated_priority!=0 ? main_thread->donated_priority:  main_thread->priority;
         t->donated_priority = thread_current()->priority;
         t->original_priority = main_thread->priority;
-        list_push_front(&donations,&t->elem);
-        printf("list size of don %d",list_size(&donations));
+        list_push_front(&main_thread->donations,&t->elem);
+        printf("list size %d",list_size(&main_thread->donations));
     	  main_thread->donated_priority = thread_current()->priority ;
     }
 }
 
 
 void revert_donation(){
-  if(list_size(&donations)>0){
-    struct donation *d =  list_entry(list_pop_front(&donations),struct donation,elem);
+  if(list_size(&thread_current()->donations)>0){
+    struct donation *d =  list_entry(list_pop_front(&thread_current()->donations),struct donation,elem);
     thread_current()->donated_priority = d->previous_priority!=0 ?d->previous_priority:0 ;
   }else{
     thread_current()->previous_priority = 0;
@@ -596,16 +593,16 @@ init_thread (struct thread *t, const char *name, int priority)
   ASSERT (name != NULL);
 
   memset (t, 0, sizeof *t);
+  list_init(&t -> donations);
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->donated_priority = 0;
   t->magic = THREAD_MAGIC;
-
+  
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
-  //list_init(&t -> donations);
   intr_set_level (old_level);
 }
 
