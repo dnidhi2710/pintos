@@ -456,7 +456,13 @@ void wakeup_next_waiting(struct semaphore1 *sema){
 void check_for_donation(){
     struct thread *main_thread = list_entry (list_front (&ready_list), struct thread, elem);
     if(thread_current()->priority > main_thread->priority){
-        //list_push_front(&main_thread->donations,thread_current()->priority);
+        struct donation *t;
+        t->donor = thread_current()->name;
+        t->donee = main_thread->name;
+        t->previous_priority = main_thread->donated_priority!=0 ? main_thread->donated_priority:  main_thread->priority;
+        t->donated_priority = thread_current()->priority;
+        t->original_priority = main_thread->priority;
+        list_push_front(&main_thread->donations,&t->elem);
     	  main_thread->donated_priority = thread_current()->priority ;
     }
 }
@@ -582,8 +588,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
-  //list_init(&t -> donations);
   list_push_back (&all_list, &t->allelem);
+  list_init(&t -> donations);
   intr_set_level (old_level);
 }
 

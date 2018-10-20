@@ -95,7 +95,7 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-   // struct list donations;
+    struct list donations;
    // struct list_elem donation_elem;
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -110,6 +110,15 @@ struct thread
   {
     unsigned value;             /* Current value. */
     struct list waiters;        /* List of waiting threads. */
+  };
+
+  struct donation{
+    char donor[16];
+    char donee[16];
+    int donated_priority;
+    int original_priority;
+    int previous_priority;
+    struct list_elem elem;
   };
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
