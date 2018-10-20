@@ -478,10 +478,10 @@ void revert_donation(){
     //printf("donor thread %s", d->donor);
    // printf("done threead %s", d->donee);
    // printf("thread current %s", thread_current()->name);  
-    if(d->donee == main_thread()->name){
-      printf("thread_current %s",thread_current()->name);
-      printf("main thread %s",main_thread()->name);
-        main_thread()->donated_priority = d->previous_priority!=0 ? d->previous_priority:0 ;
+    printf("thread_current %s",thread_current()->name);
+    printf("main thread %s",main_thread->name);
+    if(d->donee == main_thread->name){
+        main_thread->donated_priority = d->previous_priority!=0 ? d->previous_priority:0 ;
     }
     //list_entry(list_pop_front(&thread_current()->donations),struct donation,elem)
   }else{
