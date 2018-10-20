@@ -474,7 +474,9 @@ void check_for_donation(){
 void revert_donation(){
   if(list_size(&thread_current()->donations)>0){
     struct donation *d =  list_entry(list_pop_front(&thread_current()->donations),struct donation,elem);
-    printf("donee thread %s", d->donor);  
+    printf("donor thread %s", d->donor);
+    printf("done threead %s", d->donee);
+    printf("thread current %s", thread_current()->name);  
     if(d->donee == thread_current()->name){
         thread_current()->donated_priority = d->previous_priority!=0 ? d->previous_priority:0 ;
     }
