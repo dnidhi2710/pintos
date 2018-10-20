@@ -475,7 +475,7 @@ void revert_donation(){
     struct donation *d =  list_entry(list_pop_front(&thread_current()->donations),struct donation,elem);
     thread_current()->donated_priority = d->previous_priority!=0 ?d->previous_priority:0 ;
   }else{
-    thread_current()->previous_priority = 0;
+    //thread_current()->previous_priority = 0;
     thread_current()->donated_priority = 0;
   }
 }
