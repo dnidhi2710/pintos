@@ -466,6 +466,7 @@ void check_for_donation(){
         t->donated_priority = thread_current()->priority;
         t->original_priority = main_thread->priority;
         list_push_front(&donations,&t->elem);
+        printf("list size of don %d",list_size(&donations));
     	  main_thread->donated_priority = thread_current()->priority ;
     }
 }
