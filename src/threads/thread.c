@@ -473,7 +473,7 @@ void check_for_donation(){
 
 void revert_donation(){
   if(list_size(&thread_current()->donations)>0){
-    struct donation *d =  list_entry(list_pop_front(&thread_current()->donations),struct donation,elem);
+    struct donation *d =  list_entry(list_front(&thread_current()->donations),struct donation,elem);
     thread_current()->donated_priority = d->previous_priority!=0 ?d->previous_priority:0 ;
   }else{
     //thread_current()->previous_priority = 0;
