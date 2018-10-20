@@ -457,8 +457,8 @@ void check_for_donation(){
     struct thread *main_thread = list_entry (list_front (&ready_list), struct thread, elem);
     if(thread_current()->priority > main_thread->priority){
         struct donation *t;
-        t->donor = thread_current()->name;
-        t->donee = main_thread->name;
+        strlcpy (t->donor, thread_current()->name, sizeof thread_current()->name);
+        strlcpy (t->donee, main_thread->name, sizeof main_thread->name);
         t->previous_priority = main_thread->donated_priority!=0 ? main_thread->donated_priority:  main_thread->priority;
         t->donated_priority = thread_current()->priority;
         t->original_priority = main_thread->priority;
