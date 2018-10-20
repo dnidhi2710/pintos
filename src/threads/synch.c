@@ -262,13 +262,13 @@ lock_release (struct lock *lock)
 
 
 void revert_donation(){
-  if(list_size(&thread_current()->donations)>1){
-     struct donation *d =  list_entry(list_front(&thread_current()->donations),struct donation,elem);
-     list_pop_front(&thread_current()->donations);
+  if(list_size(&donations)>1){
+     struct donation *d =  list_entry(list_front(&donations),struct donation,elem);
+     list_pop_front(&donations);
      thread_current()->donated_priority = *d->previous_priority;
   }else{
-    if(list_size(&thread_current()->donations)==1){
-        list_pop_front(&thread_current()->donations);
+    if(list_size(&donations)==1){
+        list_pop_front(&donations);
     }
     thread_current()->donated_priority = 0;
   }

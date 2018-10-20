@@ -29,6 +29,8 @@ static struct list ready_list;
    sorted in ascending order of sleep ticks. */
 static struct list sleep_list;
 
+static struct list donations;
+   
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -126,6 +128,7 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&sleep_list);
   list_init (&all_list);
+  list_init (&donations);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -457,12 +460,12 @@ void check_for_donation(){
     struct thread *main_thread = list_entry (list_front (&ready_list), struct thread, elem);
     if(thread_current()->priority > main_thread->priority){
         struct donation *t;
-        strlcpy (t->donor, thread_current()->name, sizeof thread_current()->name);
-        strlcpy (t->donee, main_thread->name, sizeof main_thread->name);
+        //strlcpy (t->donor, thread_current()->name, sizeof thread_current()->name);
+        //strlcpy (t->donee, main_thread->name, sizeof main_thread->name);
         t->previous_priority = main_thread->donated_priority!=0 ? main_thread->donated_priority:  main_thread->priority;
         t->donated_priority = thread_current()->priority;
         t->original_priority = main_thread->priority;
-        list_push_front(&main_thread->donations,&t->elem);
+        list_push_front(&donations,&t->elem);
     	  main_thread->donated_priority = thread_current()->priority ;
     }
 }
