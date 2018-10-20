@@ -205,7 +205,7 @@ thread_create (const char *name, int priority,
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
   tid_t tid;
-
+  
   ASSERT (function != NULL);
 
   /* Allocate thread. */
@@ -456,7 +456,7 @@ void wakeup_next_waiting(struct semaphore1 *sema){
 void check_for_donation(){
     struct thread *main_thread = list_entry (list_front (&ready_list), struct thread, elem);
     if(thread_current()->priority > main_thread->priority){
-        list_push_front(&main_thread->donations,thread_current()->priority);
+        //list_push_front(&main_thread->donations,thread_current()->priority);
     	  main_thread->donated_priority = thread_current()->priority ;
     }
 }
@@ -582,6 +582,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
+  list_init(&t -> donations);
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
 }

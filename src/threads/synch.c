@@ -254,7 +254,8 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
   
-  revert_donation();
+//  revert_donation();
+  thread_current()->donated_priority = 0;
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
@@ -262,7 +263,7 @@ lock_release (struct lock *lock)
 void revert_donation(){
   if(list_size(&thread_current()->donations)>1){
      list_pop_front(&thread_current()->donations);
-     int don =  list_front(&thread_current()->donations)
+     int don =  list_front(&thread_current()->donations);
      thread_current()->donated_priority = don;
   }else{
     if(list_size(&thread_current()->donations)==1){
