@@ -460,7 +460,7 @@ void check_for_donation(){
         t = palloc_get_page (PAL_ZERO);
         strlcpy (t->donor, thread_current()->name, sizeof thread_current()->name);
         strlcpy (t->donee, main_thread->name, sizeof main_thread->name);
-        t->previous_priority = main_thread->donated_priority!=0 ? main_thread->donated_priority: 0;
+        //t->previous_priority = main_thread->donated_priority!=0 ? main_thread->donated_priority: 0;
         t->donated_priority = thread_current()->priority;
       //  t->original_priority = main_thread->priority;
         //list_insert_ordered (&main_thread->donations, &t->elem, ready_list_less_func, NULL);
@@ -480,6 +480,7 @@ void revert_donation(){
    // printf("thread current %s", thread_current()->name);  
     printf("thread_current %s",thread_current()->name);
     printf("main thread %s",main_thread->name);
+    printf("donee thread %s",d->donee);
     if(d->donee == main_thread->name){
         main_thread->donated_priority = d->previous_priority!=0 ? d->previous_priority:0 ;
     }
