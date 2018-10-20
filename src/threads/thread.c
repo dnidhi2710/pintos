@@ -470,6 +470,20 @@ void check_for_donation(){
     }
 }
 
+
+void revert_donation(){
+  if(list_size(&donations)>1){
+     struct donation *d =  list_entry(list_front(&donations),struct donation,elem);
+     list_pop_front(&donations);
+     thread_current()->donated_priority = d->previous_priority;
+  }else{
+    if(list_size(&donations)==1){
+        list_pop_front(&donations);
+    }
+    thread_current()->donated_priority = 0;
+  }
+}
+
 /* Sets the current thread's nice value to NICE. */
 void
 thread_set_nice (int nice UNUSED) 
@@ -592,7 +606,7 @@ init_thread (struct thread *t, const char *name, int priority)
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
-  list_init(&t -> donations);
+  //list_init(&t -> donations);
   intr_set_level (old_level);
 }
 
