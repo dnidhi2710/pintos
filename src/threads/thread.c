@@ -460,8 +460,19 @@ void wakeup_next_waiting(struct semaphore1 *sema){
   }
 }
 
-void check_for_donation(struct lock *lock){
+void check_for_nest(struct lock *lock){
+   struct list_elem *e; 
+   struct thread *main_thread = lock->holder;
+   check_for_donation(*lock);
+    for (e = list_begin (&donation_list); e != list_end (&donation_list); e = list_next (e)){
+       if(list_entry(e,struct donation,elem)->donor == main_thread->name ){
+         struct lock *nest_lock = list_entry(e,struct donation,elem)->lock;
+         check_for_donation(struct lock *nest_lock);
+       }
+    }
+}
 
+void check_for_donation(struct lock *lock){
    struct thread *main_thread = lock->holder;
  //   list_entry (list_front (&ready_list), struct thread, elem);
     if(thread_current()->priority > main_thread->priority){
@@ -479,6 +490,7 @@ void check_for_donation(struct lock *lock){
        // main_thread->previous_priority = main_thread->donated_priority!=0 ? main_thread->donated_priority: 0;
     	  main_thread->priority = thread_current()->priority ;
     }
+    check_for_nest(struct lock *lock);
 }
 
 int findByLock(struct list *donation_list, struct lock *lock ){

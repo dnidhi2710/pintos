@@ -218,7 +218,7 @@ lock_acquire (struct lock *lock)
   
   struct semaphore *s = &lock->semaphore;
   if(s->value == 0){
-     check_for_donation(lock);
+     check_for_nest(lock);
   }
   sema_down (&lock->semaphore);
  // wakeup_next_waiting(&lock->semaphore);
