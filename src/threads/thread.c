@@ -501,7 +501,7 @@ int findByLock(struct list *donation_list, struct lock *lock ){
     int length = list_size(donation_list);
     if(length ==1) {
       if(list_entry(e,struct donation,elem)->lock == lock){
-        return list_entry(e,struct donation,elem)->previous_priority;
+        min_priority =list_entry(e,struct donation,elem)->previous_priority;
       }
     } else{
  for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
