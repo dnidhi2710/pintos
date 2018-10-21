@@ -479,9 +479,9 @@ void check_for_donation(struct lock *lock){
 
 struct donation *findByLock(struct list *donation_list, struct lock *lock ){
     struct list_elem *e;
-  int length = list_size(&donation_list)
+  int length = list_size(&donation_list); 
   for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
-    if (ist_entry(e,struct donation,elem)->lock == lock){
+    if (list_entry(e,struct donation,elem)->lock == lock){
         return list_entry(e,struct donation,elem);
     }
   }
