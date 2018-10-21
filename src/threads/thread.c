@@ -498,20 +498,26 @@ int findByLock(struct list *donation_list, struct lock *lock ){
     int max_same_lock =0;
     int max_priority = 0;
     int original_priority = 0;
-    int length = list_size(donation_list); 
-  for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
+    int length = list_size(donation_list);
+    if(length ==1) {
+      if(list_entry(e,struct donation,elem)->lock == lock){
+        return list_entry(e,struct donation,elem)->previous_priority;
+      }
+    } else{
+ for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
     //original_priority = list_entry(e,struct donation,elem)->original_priority;
     if (list_entry(e,struct donation,elem)->lock == lock){
         if(e == list_begin(donation_list)){
           min_priority = list_entry(e,struct donation,elem)->previous_priority;
           max_same_lock =list_entry(e,struct donation,elem)->donated_priority;
         }else{
-          if(list_entry(e,struct donation,elem)->previous_priority<min_priority)
+          if(list_entry(e,struct donation,elem)->previous_priority<min_priority){
              min_priority = list_entry(e,struct donation,elem)->previous_priority;    
              max_same_lock =list_entry(e,struct donation,elem)->donated_priority;
+          }
         } 
-        list_remove(e);
-    }else {
+      list_remove(e);
+    } else {
         if(e == list_begin(donation_list)){
           max_priority = list_entry(e,struct donation,elem)->donated_priority;
         }else{
@@ -520,6 +526,8 @@ int findByLock(struct list *donation_list, struct lock *lock ){
         }
     }
   }
+    }
+ 
 
 //  if(max_priority > max_same_lock){
 //   for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
