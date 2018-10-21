@@ -511,7 +511,7 @@ int findByLock(struct list *donation_list, struct lock *lock ){
           min_priority = list_entry(e,struct donation,elem)->previous_priority;
           max_same_lock =list_entry(e,struct donation,elem)->donated_priority;
         }else{
-          if(list_entry(e,struct donation,elem)->previous_priority<min_priority){
+          if(list_entry(e,struct donation,elem)->previous_priority < min_priority){
              min_priority = list_entry(e,struct donation,elem)->previous_priority;    
              max_same_lock =list_entry(e,struct donation,elem)->donated_priority;
           }
@@ -530,11 +530,18 @@ int findByLock(struct list *donation_list, struct lock *lock ){
  
 
   if(max_priority > max_same_lock){
-   for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
+    int length2  = list_size(donation_list);
+    if(length2 == 1){
+        if (list_entry(list_begin (donation_list),struct donation,elem)->donated_priority == max_priority){
+            list_entry(list_begin (donation_list),struct donation,elem)->previous_priority = min_priority;
+        }
+    }else {
+      for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
         if (list_entry(e,struct donation,elem)->donated_priority == max_priority){
             list_entry(e,struct donation,elem)->previous_priority = min_priority;
         }
-    } 
+      } 
+    }
   }
   
    if(min_priority==100 || (length>1  && max_same_lock < max_priority )){
