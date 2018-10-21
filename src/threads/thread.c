@@ -258,7 +258,11 @@ thread_block (void)
 }
 /*Yield the current thread if it's priority is less than the ready queue*/
 void thread_preempt(void){ 
-  if (!list_empty (&ready_list) && thread_current ()->priority < list_entry (list_front (&ready_list), struct thread, elem)->priority)
+  if (!list_empty (&ready_list) && 
+  (thread_current ()->priority < list_entry (list_front (&ready_list), struct thread, elem)->priority  || 
+  thread_current ()->donated_priority < list_entry (list_front (&ready_list), struct thread, elem)->priority||
+  thread_current ()->priority < list_entry (list_front (&ready_list), struct thread, elem)->donated_priority||
+  thread_current ()->donated_priority < list_entry (list_front (&ready_list), struct thread, elem)->donated_priority))
       thread_yield ();
 }
 
