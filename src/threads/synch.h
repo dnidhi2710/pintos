@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 typedef int lock_t;
+#define LOCKID_ERROR ((lock_t) -1) 
 /* A counting semaphore. */
 struct semaphore 
   {
