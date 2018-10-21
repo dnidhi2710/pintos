@@ -4,8 +4,6 @@
 #include <list.h>
 #include <stdbool.h>
 
-typedef int lock_t;
-#define LOCKID_ERROR ((lock_t) -1) 
 /* A counting semaphore. */
 struct semaphore 
   {
@@ -22,7 +20,6 @@ void sema_self_test (void);
 /* Lock. */
 struct lock 
   {
-    lock_t lockid;
     struct thread *holder;      /* Thread holding lock (for debugging). */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
   };

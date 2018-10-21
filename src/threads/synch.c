@@ -34,7 +34,6 @@
 
 
 static struct semaphore lock_sema;
-static lock_t allocate_lock_id (void);
 /* Function that will ensure that the list remains in descending order
    of thread priorities; see list_less_func in lib/kernel/list.h. */
 static bool
@@ -196,10 +195,8 @@ sema_test_helper (void *sema_)
 void
 lock_init (struct lock *lock)
 {
-  lock_t lockid;
   ASSERT (lock != NULL);
 
-  lockid = lock->lockid = allocate_lock_id ();
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
 }
@@ -349,19 +346,6 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   if (!list_empty (&cond->waiters)) 
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
-}
-
-static lock_t
-allocate_lock_id (void) 
-{
-  static lock_t next_lock_id = 1;
-  lock_t lockid;
-
-  sema_down (&lock_sema);
-  lockid = next_lock_id++;
-  sema_up (&lock_sema);
-
-  return lockid;
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
