@@ -28,6 +28,8 @@ static struct list ready_list;
 /* List of processes that are asleep. The list must always be
    sorted in ascending order of sleep ticks. */
 static struct list sleep_list;
+
+static struct list donations;
    
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
@@ -125,6 +127,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&sleep_list);
+  list_init (&donations);
   list_init (&all_list);
 
   /* Set up a thread structure for the running thread. */
@@ -471,7 +474,7 @@ void check_for_donation(struct lock *lock){
         t->previous_priority = main_thread->priority;
         t->donated_priority = thread_current()->priority;
         //list_insert_ordered (&main_thread->donations, &t->elem, ready_list_less_func, NULL);
-        list_push_front(&main_thread->donations,&t->elem);
+        list_push_front(&donations,&t->elem);
        // printf("list size %d",list_size(&main_thread->donations));
        // main_thread->previous_priority = main_thread->donated_priority!=0 ? main_thread->donated_priority: 0;
     	  main_thread->priority = thread_current()->priority ;
@@ -523,8 +526,8 @@ int findByLock(struct list *donation_list, struct lock *lock ){
 }
 
 void revert_donation(struct lock *lock){
-  if(list_size(&thread_current()->donations)>0){
-  int previous_priority = findByLock(&thread_current()->donations,lock);
+  if(list_size(&donations)>0){
+  int previous_priority = findByLock(&donations,lock);
      if(previous_priority != 0){
         thread_current()->priority = previous_priority;
       }
