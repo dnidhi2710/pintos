@@ -161,6 +161,6 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 void thread_preempt(void);
 void wakeup_next_waiting(struct semaphore1 * );
-void check_for_donation(struct lock *);
+void check_for_donation(struct thread *);
 void revert_donation(void);
 #endif /* threads/thread.h */
