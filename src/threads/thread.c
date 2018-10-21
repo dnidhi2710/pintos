@@ -507,13 +507,13 @@ int findByLock(struct list *donation_list, struct lock *lock ){
     }
   }
 
-  if(max_priority > max_same_lock){
-   for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
-        if (list_entry(e,struct donation,elem)->donated_priority == max_priority){
-            list_entry(e,struct donation,elem)->previous_priority = min_priority;
-        }
-    } 
-  }
+//  if(max_priority > max_same_lock){
+//   for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
+  //      if (list_entry(e,struct donation,elem)->donated_priority == max_priority){
+   //         list_entry(e,struct donation,elem)->previous_priority = min_priority;
+    //    }
+  //  } 
+//  }
   
    if(min_priority==100 || (length>1  && max_same_lock < max_priority )){
       return 0;
