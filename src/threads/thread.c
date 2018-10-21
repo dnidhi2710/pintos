@@ -460,12 +460,12 @@ void check_for_donation(){
         t = palloc_get_page (PAL_ZERO);
         strlcpy (t->donor, thread_current()->name, sizeof thread_current()->name);
         strlcpy (t->donee, main_thread->name, sizeof main_thread->name);
-        //t->previous_priority = main_thread->donated_priority!=0 ? main_thread->donated_priority: 0;
+        t->previous_priority = main_thread->donated_priority != 0 ?  main_thread->donated_priority:0;
         t->donated_priority = thread_current()->priority;
-      //  t->original_priority = main_thread->priority;
         //list_insert_ordered (&main_thread->donations, &t->elem, ready_list_less_func, NULL);
         list_push_front(&thread_current()->donations,&t->elem);
        // printf("list size %d",list_size(&main_thread->donations));
+        main_thread->previous_priority = main_thread->donated_priority!=0 ? main_thread->donated_priority: 0;
     	  main_thread->donated_priority = thread_current()->priority ;
     }
 }
@@ -473,14 +473,11 @@ void check_for_donation(){
 
 void revert_donation(){
   if(list_size(&thread_current()->donations)>0){
-    struct donation *d =  list_entry(list_pop_front(&thread_current()->donations),struct donation,elem);
+    struct donation *d =  list_entry(list_front(&thread_current()->donations),struct donation,elem);
     struct thread *main_thread = list_entry (list_front (&ready_list), struct thread, elem);
-    //printf("donor thread %s", d->donor);
-   // printf("done threead %s", d->donee);
-   // printf("thread current %s", thread_current()->name);  
-    printf("thread_current %s",thread_current()->name);
-    printf("main thread %s",main_thread->name);
-    printf("donee thread %s",d->donee);
+    printf("donated prio %d",main_thread->donated_priority);
+    printf("list donated %d",d->donated_priority);
+    printf("list previous %d",d->previous_priority);
     if(d->donee == main_thread->name){
         main_thread->donated_priority = d->previous_priority!=0 ? d->previous_priority:0 ;
     }
