@@ -455,7 +455,7 @@ void wakeup_next_waiting(struct semaphore1 *sema){
 
 void check_for_donation(){
     struct thread *main_thread = list_entry (list_front (&ready_list), struct thread, elem);
-    if(thread_current()->priority >= main_thread->priority){
+    if(thread_current()->priority > main_thread->priority){
         struct donation *t;
         t = palloc_get_page (PAL_ZERO);
         strlcpy (t->donor, thread_current()->name, sizeof thread_current()->name);
@@ -463,7 +463,7 @@ void check_for_donation(){
         t->previous_priority = main_thread->donated_priority != 0 ?  main_thread->donated_priority:0;
         t->donated_priority = thread_current()->priority;
         //list_insert_ordered (&main_thread->donations, &t->elem, ready_list_less_func, NULL);
-        list_push_front(&main_thread()->donations,&t->elem);
+        list_push_front(&main_thread->donations,&t->elem);
        // printf("list size %d",list_size(&main_thread->donations));
        // main_thread->previous_priority = main_thread->donated_priority!=0 ? main_thread->donated_priority: 0;
     	  main_thread->donated_priority = thread_current()->priority ;
@@ -473,7 +473,7 @@ void check_for_donation(){
 
 void revert_donation(){
   if(list_size(&thread_current()->donations)>0){
-    struct donation *d =  list_entry(list_front(&thread_current()->donations),struct donation,elem);
+    struct donation *d =  list_entry(list_pop_front(&thread_current()->donations),struct donation,elem);
     //struct thread *main_thread = list_entry (list_front (&ready_list), struct thread, elem);
    // printf("donated prio %d",main_thread->donated_priority);
    // printf("list donated %d",d->donated_priority);
@@ -484,7 +484,7 @@ void revert_donation(){
    if( d->previous_priority != 0 ){
      thread_current()->donated_priority = d->previous_priority: 
    }else {
-     thread_current->donated_priority = 0;
+     thread_current()->donated_priority = 0;
    }
     //list_entry(list_pop_front(&thread_current()->donations),struct donation,elem)
   }
