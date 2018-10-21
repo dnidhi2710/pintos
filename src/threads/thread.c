@@ -453,8 +453,10 @@ void wakeup_next_waiting(struct semaphore1 *sema){
   }
 }
 
-void check_for_donation(){
-    struct thread *main_thread = list_entry (list_front (&ready_list), struct thread, elem);
+void check_for_donation(struct lock *lock){
+
+    struct thread *main_thread = lock->holder;
+ //   list_entry (list_front (&ready_list), struct thread, elem);
     if(thread_current()->priority > main_thread->priority){
         struct donation *t;
         t = palloc_get_page (PAL_ZERO);
@@ -482,7 +484,7 @@ void revert_donation(){
     //    main_thread->donated_priority = d->previous_priority!=0 ? d->previous_priority:0 ;
    // }
    if( d->previous_priority != 0 ){
-     thread_current()->donated_priority = d->previous_priority: 
+     thread_current()->donated_priority = d->previous_priority;
    }else {
      thread_current()->donated_priority = 0;
    }
