@@ -114,6 +114,7 @@ struct thread
   };
 
   struct donation{
+    struct lock *lock;
     char donor[16];
     char donee[16];
     int donated_priority;

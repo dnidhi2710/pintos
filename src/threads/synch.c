@@ -216,10 +216,10 @@ lock_acquire (struct lock *lock)
   
   struct semaphore *s = &lock->semaphore;
   if(s->value == 0){
-     check_for_donation(lock->holder);
+     check_for_donation(lock);
   }
   sema_down (&lock->semaphore);
-  wakeup_next_waiting(&lock->semaphore);
+  //wakeup_next_waiting(&lock->semaphore);
   lock->holder = thread_current ();
 }
 
@@ -254,7 +254,7 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
   
-  revert_donation();
+  revert_donation(lock);
 //  thread_current()->donated_priority = 0;
   lock->holder = NULL;
   sema_up (&lock->semaphore);
