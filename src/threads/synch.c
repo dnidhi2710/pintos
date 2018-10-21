@@ -253,10 +253,10 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-  
-  revert_donation(lock);
+
 //  thread_current()->donated_priority = 0;
   lock->holder = NULL;
+  revert_donation(lock);
   sema_up (&lock->semaphore);
 }
 

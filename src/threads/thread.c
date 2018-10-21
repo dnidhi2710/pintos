@@ -477,32 +477,33 @@ void check_for_donation(struct lock *lock){
     }
 }
 
-struct donation *findByLock(struct list *donation_list, struct lock *lock ){
+int findByLock(struct list *donation_list, struct lock *lock ){
     struct list_elem *e;
+    int min_priority =100;
  // int length = list_size(&donation_list); 
   for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
     if (list_entry(e,struct donation,elem)->lock == lock){
-        return list_entry(e,struct donation,elem);    
-}
+        if(e == list_begin(donation_list)){
+          min_priority = e->previous_priority;
+        }else{
+          if(e->previous_priority<min_priority)
+             min_priority = e->previous_priority;
+        } 
+    }
+  }
+  if(min_priority==100){
+    return 0;
+  }else{
+    return min_priority;
   }
 }
 
 void revert_donation(struct lock *lock){
   if(list_size(&thread_current()->donations)>0){
-  struct donation *d = findByLock(&thread_current()->donations,lock);
-    //struct thread *main_thread = list_entry (list_front (&ready_list), struct thread, elem);
-   // printf("donated prio %d",main_thread->donated_priority);
-   // printf("list donated %d",d->donated_priority);
-   // printf("list previous %d",d->previous_priority);
-   // if(d->donee == main_thread->name){
-    //    main_thread->donated_priority = d->previous_priority!=0 ? d->previous_priority:0 ;
-   // }
-    // printf("%d",d->previous_priority);
-   //  printf("%d",d->donated_priority);
-     if(d->previous_priority!= 0){
-        thread_current()->priority = d->previous_priority;
+  int previous_priority = findByLock(&thread_current()->donations,lock);
+     if(previous_priority != 0){
+        thread_current()->priority = previous_priority;
       }
-    //list_entry(list_pop_front(&thread_current()->donations),struct donation,elem)
   }
 }
 
