@@ -506,15 +506,20 @@ int findByLock(struct list *donation_list, struct lock *lock ){
         }
     }
   }
-
-  if(min_priority==100 || (length > 1 && (max_same_lock < max_priority)) ){
-     for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
-       list_entry(e,struct donation,elem)->previous_priority = min_priority;
-     }
-    return 0;
-  } else {
-    return min_priority;
+  
+  if(max_same_lock < max_priority){
+    for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
+          list_entry(e,struct donation,elem)->previous_priority = min_priority;
+      }
+      return 0;
+  }else{
+   if(min_priority==100){
+      return 0;
+    }else {
+      return min_priority;
+    }
   }
+
 }
 
 void revert_donation(struct lock *lock){
