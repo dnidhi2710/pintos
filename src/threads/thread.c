@@ -506,12 +506,11 @@ int findByLock(struct list *donation_list, struct lock *lock ){
         }
     }
   }
-  if( min_priority==100 ) {
-      if (length > 1 && max_same_lock < max_priority) {
-         return 0;
-      }else{
-         return original_priority;
-      }
+
+  if(length == 1){
+    return original_priority;
+  } else if(min_priority==100 || (length > 1 && (max_same_lock < max_priority)) ){
+    return 0;
   } else {
     return min_priority;
   }
