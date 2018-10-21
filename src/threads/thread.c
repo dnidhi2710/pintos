@@ -491,7 +491,7 @@ void check_for_donation(struct lock *lock){
     	  main_thread->priority = thread_current()->priority ;
     }
 }
-
+/*
 int findByLock(struct list *donation_list,struct lock *lock){
       int length = list_size(donation_list);
       int min_priority = 100;
@@ -515,8 +515,8 @@ int findByLock(struct list *donation_list,struct lock *lock){
         return min_priority;
       }
 }
+*/
 
-/*
 int findByLock(struct list *donation_list, struct lock *lock ){
     struct list_elem *e;
     int min_priority =100;
@@ -554,7 +554,6 @@ int findByLock(struct list *donation_list, struct lock *lock ){
   }
     }
  
-
   if(max_priority > max_same_lock){
     int length2  = list_size(donation_list);
     if(length2 == 1){
@@ -576,7 +575,7 @@ int findByLock(struct list *donation_list, struct lock *lock ){
       return min_priority;
     }
 }
-*/
+
 
 void revert_donation(struct lock *lock){
   if(list_size(&donations)>0){
