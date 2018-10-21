@@ -219,7 +219,7 @@ lock_acquire (struct lock *lock)
      check_for_donation(lock);
   }
   sema_down (&lock->semaphore);
-  //wakeup_next_waiting(&lock->semaphore);
+ // wakeup_next_waiting(&lock->semaphore);
   lock->holder = thread_current ();
 }
 
