@@ -34,6 +34,7 @@
 
 
 static struct semaphore lock_sema;
+static tid_t allocate_tid (void);
 /* Function that will ensure that the list remains in descending order
    of thread priorities; see list_less_func in lib/kernel/list.h. */
 static bool

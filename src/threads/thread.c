@@ -466,7 +466,7 @@ void check_for_donation(struct lock *lock){
         t = palloc_get_page (PAL_ZERO);
         t->lock = lock;
         t->lockId = lock->lockid;
-        printf("lock id %d",t->lockid);
+        printf("lock id %d",t->lockId);
         strlcpy (t->donor, thread_current()->name, sizeof thread_current()->name);
         strlcpy (t->donee, main_thread->name, sizeof main_thread->name);
         t->original_priority = main_thread->original_priority;
