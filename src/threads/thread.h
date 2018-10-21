@@ -91,6 +91,7 @@ struct thread
     int priority;                       /* Priority. */
     int donated_priority;     /* Donated priority. */
     int previous_priority;          /*previous priority*/
+    int original_priority;
     int64_t sleep_ticks;                /* Sleep timer ticks. */
     struct list_elem allelem;           /* List element for all threads list. */
 

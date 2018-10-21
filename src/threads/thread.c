@@ -467,6 +467,7 @@ void check_for_donation(struct lock *lock){
         t->lock = lock;
         strlcpy (t->donor, thread_current()->name, sizeof thread_current()->name);
         strlcpy (t->donee, main_thread->name, sizeof main_thread->name);
+        t->original_priority = main_thread->original_priority;
         t->previous_priority = main_thread->priority;
         t->donated_priority = thread_current()->priority;
         //list_insert_ordered (&main_thread->donations, &t->elem, ready_list_less_func, NULL);
@@ -482,8 +483,10 @@ int findByLock(struct list *donation_list, struct lock *lock ){
     int min_priority =100;
     int max_same_lock =0;
     int max_priority = 0;
+    int original_priority = 0;
     int length = list_size(donation_list); 
   for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
+    original_priority = list_entry(e,struct donation,elem)->original_priority;
     if (list_entry(e,struct donation,elem)->lock == lock){
         if(e == list_begin(donation_list)){
           min_priority = list_entry(e,struct donation,elem)->previous_priority;
@@ -503,8 +506,12 @@ int findByLock(struct list *donation_list, struct lock *lock ){
         }
     }
   }
-  if(min_priority==100 || (length > 1 && max_same_lock < max_priority) ){
-    return 0;
+  if(min_priority==100){
+      if (length > 1 && max_same_lock < max_priority) ){
+         return 0;
+      }else{
+         return original_priority
+      }
   } else {
     return min_priority;
   }
@@ -637,6 +644,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->original_priority = priority;
   t->donated_priority = 0;
   t->magic = THREAD_MAGIC;
   
