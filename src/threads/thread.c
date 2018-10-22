@@ -421,6 +421,7 @@ thread_set_priority (int new_priority)
 {
   enum intr_level old_level;
   struct thread *t;
+  struct donation *tmp;
   struct list_elem *e;
   int p;
 
@@ -429,10 +430,11 @@ thread_set_priority (int new_priority)
      int maxi=0;
     if(length ==1) {
       e = list_begin(&donations);
-      if(list_entry(e,struct donation,elem)->donee == thread_current()->name){
-        if((list_entry(e,struct donation,elem))->donated_priority > maxi){
-          printf("maxi");
-          maxi = list_entry(e,struct donation,elem)->donated_priority;
+      tmp = list_entry(e,struct donation,elem);
+      printf("donatd_prioti %d",tmp->donated_priority);
+      if(tmp->donee == thread_current()->name){
+        if(tmp->donated_priority > maxi){
+          maxi = tmp->donated_priority;
         }
       }
     } else{
