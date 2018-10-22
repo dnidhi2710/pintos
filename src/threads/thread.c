@@ -523,6 +523,8 @@ int findByLock(struct list *donation_list, struct lock *lock ){
     int max_same_lock =0;
     int max_priority = 0;
     int original_priority = 0;
+    int count =0;
+    int maximum_prio = 0;
     int length = list_size(donation_list);
     if(length ==1) {
       if(list_entry(list_begin(donation_list),struct donation,elem)->lock == lock){
@@ -532,6 +534,12 @@ int findByLock(struct list *donation_list, struct lock *lock ){
     } else{
  for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
     //original_priority = list_entry(e,struct donation,elem)->original_priority;
+    if(list_entry(e,struct donation,elem))->donee == thread_current()->name){
+        count++;
+        if(list_entry(e,struct donation,elem))->donated_priority > maximum_prio){
+          maximum_prio = list_entry(e,struct donation,elem))->donated_priority;
+        }
+    }
     if (list_entry(e,struct donation,elem)->lock == lock){
         if(e == list_begin(donation_list)){
           min_priority = list_entry(e,struct donation,elem)->previous_priority;
@@ -569,11 +577,14 @@ int findByLock(struct list *donation_list, struct lock *lock ){
     }
   }
   */
-   if(min_priority==100 || (length>1  && max_same_lock < max_priority )){
+  if(count>1){
+    return maximum_prio;
+  }
+   if(min_priority==100 || (length>1  && max_same_lock < max_priority) ){
       return 0;
-    }else {
+   }else {
       return min_priority;
-    }
+   }
 }
 
 
