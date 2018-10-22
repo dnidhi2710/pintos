@@ -424,7 +424,22 @@ thread_set_priority (int new_priority)
   int p;
 
   old_level = intr_disable();
-  thread_current ()->priority = new_priority;
+     int length = list_size(donation_list);
+     int maxi=0;
+    if(length ==1) {
+      if(list_entry(list_begin(donation_list),struct donation,elem)->donee == thread_current()->name){
+        maxi =list_entry(list_begin(donation_list),struct donation,elem)->donated_priority;
+      }
+    } else{
+    for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
+    //original_priority = list_entry(e,struct donation,elem)->original_priority;
+    if((list_entry(e,struct donation,elem))->donee == thread_current()->name){
+        if((list_entry(e,struct donation,elem))->donated_priority > maxi){
+          maxi = list_entry(e,struct donation,elem)->donated_priority;
+        }
+    }}}
+
+  thread_current ()->priority = maxi > new_priority? maxi : new_priority;
 
   /* Check the priority of the thread at the front of the ready
      list and yield the CPU if the current thread no longer have
