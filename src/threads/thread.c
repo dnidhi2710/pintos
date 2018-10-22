@@ -111,10 +111,10 @@ cond_var_sort_list_func(const struct list_elem *a,
                       const struct list_elem *b,
                       void *aux UNUSED)
 {
-  struct condition *t_a = list_entry(a, struct condition, elem);
-  struct condition *t_b = list_entry(b, struct condition, elem);
-  int p_a = t_a->waiter.priority;
-  int p_b = t_b->waiter.priority;
+  struct semaphore_elem *t_a = list_entry(a, struct semaphore_elem, elem);
+  struct semaphore_elem *t_b = list_entry(b, struct semaphore_elem, elem);
+  int p_a = t_a->priority;
+  int p_b = t_b->priority;
 
   return p_a > p_b;
 }
