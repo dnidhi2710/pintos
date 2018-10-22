@@ -534,79 +534,79 @@ void check_for_donation(struct lock *lock){
 }
 
 int findByLock(struct list *donation_list, struct lock *lock ){
-  struct lock *lck;
-  struct list_elem *l;
-  struct donation *d,*dl;
-  int max_donor=0, o_priority=0;
-  //Finding the lock
-  if(list_size(&donation_list)==1){
-    return list_entry(list_front(&donation_list),struct donation,elem)->original_priority;
-  }
-  for(l=list_begin(&donation_list);l!=end(donation_list);l=list_next(l)){
-    d = list_entry(l,struct donation, elem);
-    if(d->lock == lock){
-      dl = d;
-      o_priority = dl->donated_priority;
+  // struct lock *lck;
+  // struct list_elem *l;
+  // struct donation *d,*dl;
+  // int max_donor=0, o_priority=0;
+  // //Finding the lock
+  // if(list_size(&donation_list)==1){
+  //   return list_entry(list_front(&donation_list),struct donation,elem)->original_priority;
+  // }
+  // for(l=list_begin(&donation_list);l!=list_end(&donation_list);l=list_next(l)){
+  //   d = list_entry(l,struct donation, elem);
+  //   if(d->lock == lock){
+  //     dl = d;
+  //     o_priority = dl->donated_priority;
+  //   }
+  //   if(!strcmp(d->name,thread_current()->name))
+  //     if(d->donated_priority > max_donor)
+  //       max_donor = d->donated_priority;
+  // }
+  // return (max_donor>o_priority)? max_donor:o_priority;
+
+    struct list_elem *e;
+    int min_priority =100;
+    int max_same_lock =0;
+    int max_priority = 0;
+    int original_priority = 0;
+    int count =0;
+    int maximum_prio = 0;
+    int length = list_size(donation_list);
+    if(length ==1) {
+      if(list_entry(list_begin(donation_list),struct donation,elem)->lock == lock){
+        min_priority =list_entry(list_begin(donation_list),struct donation,elem)->original_priority;
+        list_remove(list_begin(donation_list));
+      }
+    } else{
+ for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
+    //original_priority = list_entry(e,struct donation,elem)->original_priority;
+    if(!strcmp((list_entry(e,struct donation,elem))->donee , thread_current()->name)){
+        count++;
+        if((list_entry(e,struct donation,elem))->donated_priority > maximum_prio){
+          maximum_prio = list_entry(e,struct donation,elem)->donated_priority;
+        }
     }
-    if(!strcmp(d->name,thread_current()->name))
-      if(d->donated_priority > max_donor)
-        max_donor = d->donated_priority;
+    if (list_entry(e,struct donation,elem)->lock == lock){
+        if(e == list_begin(donation_list)){
+          min_priority = list_entry(e,struct donation,elem)->previous_priority;
+          max_same_lock =list_entry(e,struct donation,elem)->donated_priority;
+        }else{
+          if(list_entry(e,struct donation,elem)->previous_priority < min_priority){
+             min_priority = list_entry(e,struct donation,elem)->previous_priority;    
+             max_same_lock =list_entry(e,struct donation,elem)->donated_priority;
+          }
+        } 
+      list_remove(e);
+    } 
+    else {
+        if(e == list_begin(donation_list)){
+          max_priority = list_entry(e,struct donation,elem)->donated_priority;
+        }else{
+          if(list_entry(e,struct donation,elem)->donated_priority > max_priority)
+            max_priority = list_entry(e,struct donation,elem)->donated_priority;
+        }
+    }
   }
-  return (max_donor>o_priority)? max_donor:o_priority;
+    }
 
-//     struct list_elem *e;
-//     int min_priority =100;
-//     int max_same_lock =0;
-//     int max_priority = 0;
-//     int original_priority = 0;
-//     int count =0;
-//     int maximum_prio = 0;
-//     int length = list_size(donation_list);
-//     if(length ==1) {
-//       if(list_entry(list_begin(donation_list),struct donation,elem)->lock == lock){
-//         min_priority =list_entry(list_begin(donation_list),struct donation,elem)->original_priority;
-//         list_remove(list_begin(donation_list));
-//       }
-//     } else{
-//  for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
-//     //original_priority = list_entry(e,struct donation,elem)->original_priority;
-//     if((list_entry(e,struct donation,elem))->donee == thread_current()->name){
-//         count++;
-//         if((list_entry(e,struct donation,elem))->donated_priority > maximum_prio){
-//           maximum_prio = list_entry(e,struct donation,elem)->donated_priority;
-//         }
-//     }
-//     if (list_entry(e,struct donation,elem)->lock == lock){
-//         if(e == list_begin(donation_list)){
-//           min_priority = list_entry(e,struct donation,elem)->previous_priority;
-//           max_same_lock =list_entry(e,struct donation,elem)->donated_priority;
-//         }else{
-//           if(list_entry(e,struct donation,elem)->previous_priority < min_priority){
-//              min_priority = list_entry(e,struct donation,elem)->previous_priority;    
-//              max_same_lock =list_entry(e,struct donation,elem)->donated_priority;
-//           }
-//         } 
-//       list_remove(e);
-//     } 
-//     else {
-//         if(e == list_begin(donation_list)){
-//           max_priority = list_entry(e,struct donation,elem)->donated_priority;
-//         }else{
-//           if(list_entry(e,struct donation,elem)->donated_priority > max_priority)
-//             max_priority = list_entry(e,struct donation,elem)->donated_priority;
-//         }
-//     }
-//   }
-//     }
-
-//   if(count>1 && (length>1  && max_same_lock < max_priority) ){
-//     return maximum_prio;
-//   }
-//    if(min_priority==100){
-//       return 0;
-//    }else {
-//       return min_priority;
-//    }
+  if(count>1 ){
+    return maximum_prio;
+  }
+   if(min_priority==100 ||  (length>1  && max_same_lock < max_priority) ){
+      return 0;
+   }else {
+      return min_priority;
+   }
 }
 
 void
