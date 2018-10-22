@@ -49,6 +49,20 @@ ready_list_less_func (const struct list_elem *a,
   return p_a > p_b;
 }
 
+static bool 
+cond_var_sort_list_func(const struct list_elem *a,
+                      const struct list_elem *b,
+                      void *aux UNUSED)
+{
+  struct semaphore_elem *t_a = list_entry(a, struct semaphore_elem, elem);
+  struct semaphore_elem *t_b = list_entry(b, struct semaphore_elem, elem);
+  int p_a = t_a->priority;
+  int p_b = t_b->priority;
+
+  return p_a > p_b;
+}
+
+
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -323,7 +337,7 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   sema_init (&waiter.semaphore, 0);
-  waiter.priority = thread_current()->priority; 
+  waiter.priority = thread_current->priority; 
   list_insert_ordered (&cond->waiters, &waiter.elem,cond_var_sort_list_func,NULL);
 //  list_push_back (&cond->waiters, &waiter.elem);
   lock_release (lock);
