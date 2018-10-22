@@ -25,6 +25,11 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* Nice values for advanced scheduler. */
+#define NICE_MIN -20
+#define NICE_DEFAULT 0
+#define NICE_MAX 20
+#define RECENT_CPU_INITIAL 0
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -92,7 +97,9 @@ struct thread
     int donated_priority;               /* Donated priority. */
     int64_t sleep_ticks;                /* Sleep timer ticks. */
     struct list_elem allelem;           /* List element for all threads list. */
-
+    int nice;                           /* Nice value for mlfqs. */
+    int recent_cpu;                     /* CPU time calculation for mlfqs. */
+    int load_avg;                       /* Load average counter*/
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
     struct list donations;
@@ -147,6 +154,8 @@ void thread_set_priority (int);
 int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
+void calculate_recent_cpu(struct thread *cur, void *aux UNUSED);
+void calculate_mlfqs_priority(struct thread *cur, void *aux UNUSED);
 int thread_get_load_avg (void);
 void thread_preempt(void);
 void wakeup_next_waiting(struct semaphore1 * );
