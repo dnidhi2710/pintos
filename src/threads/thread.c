@@ -106,6 +106,19 @@ ready_list_less_func (const struct list_elem *a,
   return p_a > p_b;
 }
 
+static bool 
+cond_var_sort_list_func(const struct list_elem *a,
+                      const struct list_elem *b,
+                      void *aux UNUSED)
+{
+  struct condition *t_a = list_entry(a, struct condition, elem);
+  struct condition *t_b = list_entry(b, struct condition, elem);
+  int p_a = t_a->priority;
+  int p_b = t_b->priority;
+
+  return p_a > p_b;
+}
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
