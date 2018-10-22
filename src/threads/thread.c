@@ -138,7 +138,6 @@ thread_init (void)
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
   load_avg = 0;
-  printf("Bla bla bla\n");
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -677,9 +676,6 @@ calculate_load_avg(void)
   }
 
   load_avg =  MULTIPLY_FIXED_POINT_NUMBERS(DIVIDE_FP_AND_INT(CONVERT_TO_FIXED_POINT(59),60), load_avg) + MULTIPLY_FP_AND_INT(DIVIDE_FP_AND_INT(CONVERT_TO_FIXED_POINT(1), 60), ready_threads);
-  int div_fp_int = DIVIDE_FP_AND_INT(CONVERT_TO_FIXED_POINT(59),60), load_avg;
-  //printf("Printing 59/60: %d\n", div_fp_int);
-  //printf("Printing load avg: %d\n", load_avg);
 }
 
 /* Returns 100 times the system load average. */
