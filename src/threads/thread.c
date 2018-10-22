@@ -432,11 +432,38 @@ thread_set_priority (int new_priority)
 {
   enum intr_level old_level;
   struct thread *t;
+  struct donation *tmp;
+  struct list_elem *e;
   int p;
 
   old_level = intr_disable();
-  thread_current ()->priority = new_priority;
-
+     int length = list_size(&donations);
+     int maxi=0;
+    if(length ==1) {
+      e = list_begin(&donations);
+      tmp = list_entry(e,struct donation,elem);
+      //printf("donatd_prioti %d",tmp->donated_priority);
+      if(strcmp(tmp->donee,thread_current()->name)==0){
+        if(tmp->donated_priority > maxi){
+          maxi = tmp->donated_priority;
+          tmp->original_priority = new_priority;
+        }
+      }
+    } else{
+    for (e = list_begin (&donations); e != list_end (&donations); e = list_next (e)){
+    //original_priority = list_entry(e,struct donation,elem)->original_priority;
+    if((list_entry(e,struct donation,elem))->donee == thread_current()->name){
+        if((list_entry(e,struct donation,elem))->donated_priority > maxi){
+          maxi = list_entry(e,struct donation,elem)->donated_priority;
+           tmp->original_priority = new_priority;
+        }
+    }}}
+if(maxi>new_priority){
+  thread_current()->priority = maxi;
+}else {
+    thread_current()->priority = new_priority;
+}
+ 
   /* Check the priority of the thread at the front of the ready
      list and yield the CPU if the current thread no longer have
      the highest priority. */
@@ -472,6 +499,20 @@ void wakeup_next_waiting(struct semaphore1 *sema){
 }
 
 
+
+void check_for_nest(struct lock *lock){
+   struct list_elem *e; 
+   struct thread *main_thread = lock->holder;
+   check_for_donation(lock);
+    for (e = list_begin (&donations); e != list_end (&donations); e = list_next (e)){
+       if(strcmp(list_entry(e,struct donation,elem)->donor,main_thread->name)==0){
+         struct lock *nest_lock = list_entry(e,struct donation,elem)->lock;
+         check_for_donation(nest_lock);
+       }
+    }
+}
+
+
 void check_for_donation(struct lock *lock){
    struct thread *main_thread = lock->holder;
  //   list_entry (list_front (&ready_list), struct thread, elem);
@@ -491,31 +532,6 @@ void check_for_donation(struct lock *lock){
     	  main_thread->priority = thread_current()->priority ;
     }
 }
-/*
-int findByLock(struct list *donation_list,struct lock *lock){
-      int length = list_size(donation_list);
-      int min_priority = 100;
-      int max_same_lock = 0;
-      if(length == 1){
-        if(list_entry(list_begin(donation_list),struct donation,elem)->lock == lock && list_entry(e,struct donation,elem)->lock->holder->priority == thread_current()->priority){
-          min_priority =list_entry(list_begin(donation_list),struct donation,elem)->previous_priority;
-        }
-        list_remove(list_begin(donation_list));
-      }else{
-        for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
-          if(list_entry(e,struct donation,elem)->lock == lock && list_entry(e,struct donation,elem)->lock->holder->priority == thread_current()->priority ){
-              min_priority = list_entry(e,struct donation,elem)->previous_priority;
-            list_remove(e);
-          }
-        }
-      }
-      if(min_priority==100){
-        return 0;
-      }else {
-        return min_priority;
-      }
-}
-*/
 
 int findByLock(struct list *donation_list, struct lock *lock ){
     struct list_elem *e;
@@ -523,15 +539,23 @@ int findByLock(struct list *donation_list, struct lock *lock ){
     int max_same_lock =0;
     int max_priority = 0;
     int original_priority = 0;
+    int count =0;
+    int maximum_prio = 0;
     int length = list_size(donation_list);
     if(length ==1) {
       if(list_entry(list_begin(donation_list),struct donation,elem)->lock == lock){
-        min_priority =list_entry(list_begin(donation_list),struct donation,elem)->previous_priority;
+        min_priority =list_entry(list_begin(donation_list),struct donation,elem)->original_priority;
         list_remove(list_begin(donation_list));
       }
     } else{
  for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
     //original_priority = list_entry(e,struct donation,elem)->original_priority;
+    if((list_entry(e,struct donation,elem))->donee == thread_current()->name){
+        count++;
+        if((list_entry(e,struct donation,elem))->donated_priority > maximum_prio){
+          maximum_prio = list_entry(e,struct donation,elem)->donated_priority;
+        }
+    }
     if (list_entry(e,struct donation,elem)->lock == lock){
         if(e == list_begin(donation_list)){
           min_priority = list_entry(e,struct donation,elem)->previous_priority;
@@ -553,27 +577,15 @@ int findByLock(struct list *donation_list, struct lock *lock ){
     }
   }
     }
- 
-  if(max_priority > max_same_lock){
-    int length2  = list_size(donation_list);
-    if(length2 == 1){
-        if (list_entry(list_begin (donation_list),struct donation,elem)->donated_priority == max_priority){
-            list_entry(list_begin (donation_list),struct donation,elem)->previous_priority = min_priority;
-        }
-    }else {
-      for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
-        if (list_entry(e,struct donation,elem)->donated_priority == max_priority){
-            list_entry(e,struct donation,elem)->previous_priority = min_priority;
-        }
-      } 
-    }
+
+  if(count>1){
+    return maximum_prio;
   }
-  
-   if(min_priority==100 || (length>1  && max_same_lock < max_priority )){
+   if(min_priority==100 || (length>1  && max_same_lock < max_priority) ){
       return 0;
-    }else {
+   }else {
       return min_priority;
-    }
+   }
 }
 
 void
