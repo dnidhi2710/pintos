@@ -534,9 +534,9 @@ int findByLock(struct list *donation_list, struct lock *lock ){
     } else{
  for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
     //original_priority = list_entry(e,struct donation,elem)->original_priority;
-    if(list_entry(e,struct donation,elem))->donee == thread_current()->name){
+    if((list_entry(e,struct donation,elem))->donee == thread_current()->name){
         count++;
-        if(list_entry(e,struct donation,elem))->donated_priority > maximum_prio){
+        if((list_entry(e,struct donation,elem))->donated_priority > maximum_prio){
           maximum_prio = list_entry(e,struct donation,elem))->donated_priority;
         }
     }
