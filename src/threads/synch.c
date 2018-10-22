@@ -32,6 +32,8 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+
+static struct semaphore lock_sema;
 /* Function that will ensure that the list remains in descending order
    of thread priorities; see list_less_func in lib/kernel/list.h. */
 static bool
@@ -216,10 +218,12 @@ lock_acquire (struct lock *lock)
   
   struct semaphore *s = &lock->semaphore;
   if(s->value == 0){
+
      //check_for_donation();
+     //check_for_nest(lock);
   }
   sema_down (&lock->semaphore);
-  wakeup_next_waiting(&lock->semaphore);
+ // wakeup_next_waiting(&lock->semaphore);
   lock->holder = thread_current ();
 }
 
@@ -255,7 +259,10 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   //revert_donation();
+
+//  thread_current()->donated_priority = 0;
   lock->holder = NULL;
+  revert_donation(lock);
   sema_up (&lock->semaphore);
 }
 

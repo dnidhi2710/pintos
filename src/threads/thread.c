@@ -30,6 +30,8 @@ static struct list ready_list;
    sorted in ascending order of sleep ticks. */
 static struct list sleep_list;
 
+static struct list donations;
+   
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -127,6 +129,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&sleep_list);
+  list_init (&donations);
   list_init (&all_list);
 
   /* Set up a thread structure for the running thread. */
@@ -209,7 +212,7 @@ thread_create (const char *name, int priority,
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
   tid_t tid;
-
+  
   ASSERT (function != NULL);
 
   /* Allocate thread. */
@@ -270,7 +273,11 @@ thread_block (void)
 }
 /*Yield the current thread if it's priority is less than the ready queue*/
 void thread_preempt(void){ 
-  if (!list_empty (&ready_list) && thread_current ()->priority < list_entry (list_front (&ready_list), struct thread, elem)->priority)
+  if (!list_empty (&ready_list) && 
+  (thread_current ()->priority < list_entry (list_front (&ready_list), struct thread, elem)->priority  || 
+  thread_current ()->donated_priority < list_entry (list_front (&ready_list), struct thread, elem)->priority||
+  thread_current ()->priority < list_entry (list_front (&ready_list), struct thread, elem)->donated_priority||
+  thread_current ()->donated_priority < list_entry (list_front (&ready_list), struct thread, elem)->donated_priority))
       thread_yield ();
 }
 
@@ -465,13 +472,110 @@ void wakeup_next_waiting(struct semaphore1 *sema){
   }
 }
 
-/*void check_for_donation(){
-    struct thread *main_thread = list_entry (list_front (&ready_list), struct thread, elem);
+
+void check_for_donation(struct lock *lock){
+   struct thread *main_thread = lock->holder;
+ //   list_entry (list_front (&ready_list), struct thread, elem);
     if(thread_current()->priority > main_thread->priority){
-        list_push_front(&main_thread->donations,thread_current()->priority);
-    	  main_thread->donated_priority = thread_current()->priority ;
+        struct donation *t;
+        t = palloc_get_page (PAL_ZERO);
+        t->lock = lock;
+        strlcpy (t->donor, thread_current()->name, sizeof thread_current()->name);
+        strlcpy (t->donee, main_thread->name, sizeof main_thread->name);
+        t->original_priority = main_thread->original_priority;
+        t->previous_priority = main_thread->priority;
+        t->donated_priority = thread_current()->priority;
+        //list_insert_ordered (&main_thread->donations, &t->elem, ready_list_less_func, NULL);
+        list_push_front(&donations,&t->elem);
+       // printf("list size %d",list_size(&main_thread->donations));
+       // main_thread->previous_priority = main_thread->donated_priority!=0 ? main_thread->donated_priority: 0;
+    	  main_thread->priority = thread_current()->priority ;
     }
-}*/
+}
+/*
+int findByLock(struct list *donation_list,struct lock *lock){
+      int length = list_size(donation_list);
+      int min_priority = 100;
+      int max_same_lock = 0;
+      if(length == 1){
+        if(list_entry(list_begin(donation_list),struct donation,elem)->lock == lock && list_entry(e,struct donation,elem)->lock->holder->priority == thread_current()->priority){
+          min_priority =list_entry(list_begin(donation_list),struct donation,elem)->previous_priority;
+        }
+        list_remove(list_begin(donation_list));
+      }else{
+        for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
+          if(list_entry(e,struct donation,elem)->lock == lock && list_entry(e,struct donation,elem)->lock->holder->priority == thread_current()->priority ){
+              min_priority = list_entry(e,struct donation,elem)->previous_priority;
+            list_remove(e);
+          }
+        }
+      }
+      if(min_priority==100){
+        return 0;
+      }else {
+        return min_priority;
+      }
+}
+*/
+
+int findByLock(struct list *donation_list, struct lock *lock ){
+    struct list_elem *e;
+    int min_priority =100;
+    int max_same_lock =0;
+    int max_priority = 0;
+    int original_priority = 0;
+    int length = list_size(donation_list);
+    if(length ==1) {
+      if(list_entry(list_begin(donation_list),struct donation,elem)->lock == lock){
+        min_priority =list_entry(list_begin(donation_list),struct donation,elem)->previous_priority;
+        list_remove(list_begin(donation_list));
+      }
+    } else{
+ for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
+    //original_priority = list_entry(e,struct donation,elem)->original_priority;
+    if (list_entry(e,struct donation,elem)->lock == lock){
+        if(e == list_begin(donation_list)){
+          min_priority = list_entry(e,struct donation,elem)->previous_priority;
+          max_same_lock =list_entry(e,struct donation,elem)->donated_priority;
+        }else{
+          if(list_entry(e,struct donation,elem)->previous_priority < min_priority){
+             min_priority = list_entry(e,struct donation,elem)->previous_priority;    
+             max_same_lock =list_entry(e,struct donation,elem)->donated_priority;
+          }
+        } 
+      list_remove(e);
+    } else {
+        if(e == list_begin(donation_list)){
+          max_priority = list_entry(e,struct donation,elem)->donated_priority;
+        }else{
+          if(list_entry(e,struct donation,elem)->donated_priority > max_priority)
+            max_priority = list_entry(e,struct donation,elem)->donated_priority;
+        }
+    }
+  }
+    }
+ 
+  if(max_priority > max_same_lock){
+    int length2  = list_size(donation_list);
+    if(length2 == 1){
+        if (list_entry(list_begin (donation_list),struct donation,elem)->donated_priority == max_priority){
+            list_entry(list_begin (donation_list),struct donation,elem)->previous_priority = min_priority;
+        }
+    }else {
+      for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
+        if (list_entry(e,struct donation,elem)->donated_priority == max_priority){
+            list_entry(e,struct donation,elem)->previous_priority = min_priority;
+        }
+      } 
+    }
+  }
+  
+   if(min_priority==100 || (length>1  && max_same_lock < max_priority )){
+      return 0;
+    }else {
+      return min_priority;
+    }
+}
 
 void
 thread_calculate_mlfqs_priority(void)
@@ -504,6 +608,16 @@ void calculate_mlfqs_priority(struct thread *cur, void *aux UNUSED)
    { 
      cur->priority = PRI_MIN;
    }
+  }
+}
+
+
+void revert_donation(struct lock *lock){
+  if(list_size(&donations)>0){
+  int previous_priority = findByLock(&donations,lock);
+     if(previous_priority != 0){
+        thread_current()->priority = previous_priority;
+      }
   }
 }
 
@@ -691,13 +805,15 @@ init_thread (struct thread *t, const char *name, int priority)
   ASSERT (name != NULL);
 
   memset (t, 0, sizeof *t);
+  //list_init(&t -> donations);
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->original_priority = priority;
   t->donated_priority = 0;
   t->magic = THREAD_MAGIC;
-  
+
   if (thread_mlfqs)
   {
     if (t == initial_thread)
@@ -711,6 +827,7 @@ init_thread (struct thread *t, const char *name, int priority)
       t->recent_cpu = thread_get_recent_cpu(); 
     }
   }
+
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
