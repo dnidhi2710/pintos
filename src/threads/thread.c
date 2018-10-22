@@ -465,7 +465,7 @@ void check_for_nest(struct lock *lock){
    struct thread *main_thread = lock->holder;
    check_for_donation(lock);
     for (e = list_begin (&donations); e != list_end (&donations); e = list_next (e)){
-       if(strcmp(list_entry(e,struct donation,elem)->donor == main_thread->name)==0){
+       if(strcmp(list_entry(e,struct donation,elem)->donor,main_thread->name)==0){
          struct lock *nest_lock = list_entry(e,struct donation,elem)->lock;
          check_for_donation(nest_lock);
        }
