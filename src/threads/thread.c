@@ -431,7 +431,7 @@ thread_set_priority (int new_priority)
     if(length ==1) {
       e = list_begin(&donations);
       tmp = list_entry(e,struct donation,elem);
-      printf("donatd_prioti %d",tmp->donated_priority);
+      //printf("donatd_prioti %d",tmp->donated_priority);
       if(strcmp(tmp->donee,thread_current()->name)==0){
         if(tmp->donated_priority > maxi){
           maxi = tmp->donated_priority;
