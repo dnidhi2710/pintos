@@ -429,7 +429,9 @@ thread_set_priority (int new_priority)
      int maxi=0;
     if(length ==1) {
       if(list_entry(list_begin(&donations),struct donation,elem)->donee == thread_current()->name){
-        maxi =list_entry(list_begin(&donations),struct donation,elem)->donated_priority;
+        if((list_entry(e,struct donation,elem))->donated_priority > maxi){
+          maxi = list_entry(e,struct donation,elem)->donated_priority;
+        }
       }
     } else{
     for (e = list_begin (&donations); e != list_end (&donations); e = list_next (e)){
@@ -439,9 +441,12 @@ thread_set_priority (int new_priority)
           maxi = list_entry(e,struct donation,elem)->donated_priority;
         }
     }}}
-
-  thread_current ()->priority = maxi > new_priority? maxi : new_priority;
-
+if(maxi>new_priority){
+  thread_current()->priority = maxi;
+}else {
+    thread_current()->priority = new_priority;
+}
+ 
   /* Check the priority of the thread at the front of the ready
      list and yield the CPU if the current thread no longer have
      the highest priority. */
