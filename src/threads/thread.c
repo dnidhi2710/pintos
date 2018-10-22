@@ -421,17 +421,18 @@ thread_set_priority (int new_priority)
 {
   enum intr_level old_level;
   struct thread *t;
+  struct list_elem *e;
   int p;
 
   old_level = intr_disable();
-     int length = list_size(donation_list);
+     int length = list_size(&donations);
      int maxi=0;
     if(length ==1) {
-      if(list_entry(list_begin(donation_list),struct donation,elem)->donee == thread_current()->name){
-        maxi =list_entry(list_begin(donation_list),struct donation,elem)->donated_priority;
+      if(list_entry(list_begin(&donations),struct donation,elem)->donee == thread_current()->name){
+        maxi =list_entry(list_begin(&donations),struct donation,elem)->donated_priority;
       }
     } else{
-    for (e = list_begin (donation_list); e != list_end (donation_list); e = list_next (e)){
+    for (e = list_begin (&donations); e != list_end (&donations); e = list_next (e)){
     //original_priority = list_entry(e,struct donation,elem)->original_priority;
     if((list_entry(e,struct donation,elem))->donee == thread_current()->name){
         if((list_entry(e,struct donation,elem))->donated_priority > maxi){
