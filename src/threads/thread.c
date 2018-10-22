@@ -429,7 +429,7 @@ thread_set_priority (int new_priority)
      int maxi=0;
     if(length ==1) {
       if(list_entry(list_begin(&donations),struct donation,elem)->donee == thread_current()->name){
-        if((list_entry(e,struct donation,elem))->donated_priority > maxi){
+        if((list_entry(list_begin(&donations),struct donation,elem))->donated_priority > maxi){
           maxi = list_entry(e,struct donation,elem)->donated_priority;
         }
       }
