@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -28,7 +29,7 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
-  char *fn_copy;
+  char *fn_copy, *token, *s, *save_ptr;
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
@@ -38,8 +39,18 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  /* Make a copy of FILE_NAME for tokenization with strtok_r(). */
+  s = palloc_get_page (0);
+  if (s == NULL)
+    return TID_ERROR;
+  strlcpy (s, file_name, PGSIZE);
+
+  /* The first token is the executable program file name. */
+  token = strtok_r (s, " ", &save_ptr);
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
+  palloc_free_page (s);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -88,10 +99,8 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  while (true)
-    {
-      thread_yield ();
-    }
+  timer_sleep(100); // A terrible, horrible, no good, very bad hack.
+  return 0;         // Properly implement at earliest convenience!
 }
 
 /* Free the current process's resources. */
@@ -198,7 +207,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp, const char *file_name);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -213,10 +222,20 @@ load (const char *file_name, void (**eip) (void), void **esp)
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
+  char *token, *s, *save_ptr;
   struct file *file = NULL;
   off_t file_ofs;
   bool success = false;
   int i;
+
+  /* Make a copy of FILE_NAME for tokenization with strtok_r(). */
+  s = palloc_get_page (0);
+  if (s == NULL)
+    goto done;
+  strlcpy (s, file_name, PGSIZE);
+
+  /* The first token is the executable program file name. */
+  token = strtok_r (s, " ", &save_ptr);
 
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
@@ -225,10 +244,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (token);
   if (file == NULL) 
     {
-      printf ("load: %s: open failed\n", file_name);
+      printf ("load: %s: open failed\n", token);
       goto done; 
     }
 
@@ -241,7 +260,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024) 
     {
-      printf ("load: %s: error loading executable\n", file_name);
+      printf ("load: %s: error loading executable\n", token);
       goto done; 
     }
 
@@ -305,7 +324,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp, file_name))
     goto done;
 
   /* Start address. */
@@ -316,6 +335,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
+  palloc_free_page (s);
   return success;
 }
 
@@ -430,20 +450,79 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp) 
+setup_stack (void **esp, const char *file_name) 
 {
   uint8_t *kpage;
+  char *token, *s, *save_ptr, **argv;
+  int argc, size, word_align, **addrs;
   bool success = false;
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  if (kpage != NULL) 
+  s = palloc_get_page (0);
+  argv = palloc_get_page (0);
+  addrs = palloc_get_page (0);
+
+  if (kpage != NULL && s != NULL && argv != NULL && addrs != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12;
+        {
+          *esp = PHYS_BASE;
+
+          /* Make a copy of FILE_NAME for use with strtok_r(). */
+          strlcpy (s, file_name, PGSIZE);
+
+          /* Tokenize all arguments in FILE_NAME into ARGV */
+          token = strtok_r (s, " ", &save_ptr);
+          size = argc = 0;
+          while (token != NULL)
+            {
+              size += strlen (token) + 1;
+              argv[argc++] = token;
+              token = strtok_r (NULL, " ", &save_ptr);
+            }
+
+          /* Push all arguments onto the stack */
+          for (int i = argc - 1; i >= 0; i--)
+            {
+              *esp -= strlen (argv[i]) + 1;
+              memcpy (*esp, argv[i], strlen (argv[i]) + 1);
+              addrs[i] = *esp;
+            }
+
+          /* Word-align to 4 bytes plus an empty argument. */
+          word_align = size % 4;
+          if (word_align < 4)
+            word_align += 4;
+          *esp -= word_align;
+          memset (*esp, 0, word_align);
+
+          /* Push all argument addresses onto the stack. */
+          for (int i = argc - 1; i >= 0; i--)
+            {
+              *esp -= 4;
+              memcpy (*esp, &addrs[i], 4);
+            }
+
+          /* Push the pointer to argv onto the stack. */
+          *esp -= 4;
+          *(char **) *esp = *esp + 4;
+
+          /* Push the value of argc onto the stack. */
+          *esp -= 4;
+          *(int *) *esp = argc;
+
+          /* Push the null return address onto the stack. */
+          *esp -= 4;
+          *(int *) *esp = 0;
+        }
       else
         palloc_free_page (kpage);
     }
+
+  palloc_free_page (s);
+  palloc_free_page (argv);
+  palloc_free_page (addrs);
   return success;
 }
 

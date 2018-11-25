@@ -4,13 +4,16 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+#include "devices/shutdown.h"
 
 static void syscall_handler (struct intr_frame *);
 
+static void halt (void);
 static void exit (int);
 static int write (int, const void *, unsigned);
 
-static void verify_uaddr (const void *);
+static void verify_stack (const void *);
 
 void
 syscall_init (void) 
@@ -21,27 +24,35 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
+  verify_stack(f->esp);
+
   int *esp = f->esp;
-
-  verify_uaddr(esp);
-
   switch (*esp)
     {
+      case SYS_HALT:
+        halt ();
+        break;
+
       case SYS_EXIT:
-        verify_uaddr(esp + 1);
         exit (*(esp + 1));
         break;
 
       case SYS_WRITE:
-        verify_uaddr(esp + 1);
-        verify_uaddr(esp + 2);
-        verify_uaddr(esp + 3);
         f->eax = write (*(esp + 1), (void *) *(esp + 2), *(esp + 3));
         break;
 
       default:
         break;
     }
+}
+
+/* Terminates Pintos by calling shutdown_power_off() (declared in
+   `devices/shutdown.h'). This should be seldom used, because you lose
+   some information about possible deadlock situations, etc. */
+void
+halt (void)
+{
+  shutdown_power_off ();
 }
 
 /* Terminates the current user program, returning status to the kernel.
@@ -72,14 +83,27 @@ write (int fd, const void *buffer, unsigned size)
   return status;
 }
 
-/* Verifies the validity of an user-provided pointer.
-   If the pointer is a null pointer, a pointer to unmapped virtual
-   memory, or a pointer to kernel virtual address space (above
-   PHYS_BASE), the pointer will be rejected and the offending
-   process will be terminated and its resources freed. */
+/* Verifies the validity of the stack at ESP.
+   If any pointer on the stack is invalid, the offending process will
+   be terminated and its resources freed. */
 static void
-verify_uaddr (const void *uaddr)
+verify_stack (const void *esp)
 {
-  if (uaddr == NULL || uaddr < (void *) 0x08048000 || uaddr >= PHYS_BASE)
-    exit (-1);
+  struct thread *cur = thread_current ();
+  void *ptr;
+
+  for (int i = 0; i < 4; i++)
+    {
+      ptr = (int *) esp + i;
+
+      /* Make sure the pointer address is an user virtual address. */
+      if (ptr == NULL || ptr < (void *) 0x08048000 || ptr >= PHYS_BASE)
+        exit (-1);
+      
+      /* Covers the case where the last pointer positioned such that
+         its first byte is valid but the remaining bytes of the data
+         are in invalid memory (see the sc-boundary-3 test). */
+      if (pagedir_get_page (cur->pagedir, ptr) == NULL)
+        exit (-1);
+    }
 }
