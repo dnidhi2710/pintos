@@ -4,6 +4,9 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#ifdef USERPROG
+#include "filesys/file.h"
+#endif
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -96,6 +99,7 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    struct list *file_list;             /* Open file list. */
 #endif
 
     /* Owned by thread.c. */

@@ -1,6 +1,7 @@
 #include "userprog/process.h"
 #include <debug.h>
 #include <inttypes.h>
+#include <list.h>
 #include <round.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,12 +15,14 @@
 #include "threads/flags.h"
 #include "threads/init.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "devices/timer.h"
 
 static thread_func start_process NO_RETURN;
+static int allocate_fd (void);
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
 /* Starts a new thread running a user program loaded from
@@ -61,9 +64,14 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {
+  struct thread *cur = thread_current ();
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
+
+  /* Initialize the process's file list. */
+  cur->file_list = malloc (sizeof (cur->file_list));
+  list_init (cur->file_list);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -108,6 +116,7 @@ void
 process_exit (void)
 {
   struct thread *cur = thread_current ();
+  struct process_file *pf;
   uint32_t *pd;
 
   /* Destroy the current process's page directory and switch back
@@ -126,6 +135,16 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+
+  /* Close and free the current process's opened files. */
+  while (!list_empty (cur->file_list))
+    {
+      struct list_elem *e = list_pop_front (cur->file_list);
+      pf = list_entry(e, struct process_file, elem);
+      file_close (pf->file);
+      free (pf);
+    }
+  free (cur->file_list);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -143,7 +162,78 @@ process_activate (void)
      interrupts. */
   tss_update ();
 }
-
+
+/* Adds FILE to the current process's list. The file descriptor is
+   returned on success. */
+int
+process_add_file (struct file *file)
+{
+  struct thread *cur = thread_current ();
+  struct process_file *pf;
+  int fd = allocate_fd ();
+
+  pf = malloc (sizeof (*pf));
+  pf->fd = fd;
+  pf->file = file;
+  list_push_front (cur->file_list, &pf->elem);
+
+  return fd;
+}
+
+/* Removes the file identified by FD from the current process's list.
+   The removed file is returned on success. */
+struct file *
+process_remove_file (int fd)
+{
+  struct thread *cur = thread_current ();
+  struct list_elem *e = list_head (cur->file_list);
+  struct process_file *pf;
+  struct file *f;
+
+  while ((e = list_next (e)) != list_end (cur->file_list)) 
+    {
+      pf = list_entry(e, struct process_file, elem);
+      if (pf->fd == fd)
+        {
+          f = pf->file;
+          list_remove (e);
+          free (pf);
+          return f;
+        }
+    }
+  return NULL;
+}
+
+/* Gets the file identified by FD from the current process's list.
+   Returns NULL if the file descriptor is invalid. */
+struct file *
+process_get_file (int fd)
+{
+  struct thread *cur = thread_current ();
+  struct list_elem *e = list_head (cur->file_list);
+  struct process_file *pf;
+
+  while ((e = list_next (e)) != list_end (cur->file_list))
+    {
+      pf = list_entry(e, struct process_file, elem);
+      if (pf->fd == fd)
+        return pf->file;
+    }
+  return NULL;
+}
+
+/* Returns a fd to use for a new file descriptor. */
+static int
+allocate_fd (void)
+{
+  static int next_fd = 1;
+  int fd;
+
+  fd = next_fd++;
+
+  return fd;
+}
+
 /* We load ELF binaries.  The following definitions are taken
    from the ELF specification, [ELF1], more-or-less verbatim.  */
 
@@ -222,9 +312,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
-  char *token, *s, *save_ptr;
   struct file *file = NULL;
+  struct process_file *pf;
   off_t file_ofs;
+  char *token, *s, *save_ptr;
   bool success = false;
   int i;
 
@@ -250,6 +341,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", token);
       goto done; 
     }
+  file_deny_write (file);
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -334,8 +426,16 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
   palloc_free_page (s);
+  if (success)
+    {
+      pf = malloc (sizeof (*pf));
+      pf->fd = allocate_fd ();
+      pf->file = file;
+      list_push_front (t->file_list, &pf->elem);
+    }
+  else
+    file_close (file);
   return success;
 }
 
