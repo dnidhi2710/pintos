@@ -112,21 +112,22 @@ process_wait (tid_t child_tid)
   struct thread *cur = thread_current ();
   struct list_elem *e = list_head (&cur->child_list);
   struct process_child *pc;
-  int status = -1;
 
   while ((e = list_next (e)) != list_end (&cur->child_list)) 
     {
       pc = list_entry(e, struct process_child, elem);
       if (pc->child_tid == child_tid)
         {
-          sema_down (&thread_get (child_tid)->wait);
-          status = pc->exit_status;
+          struct thread *child = thread_get (child_tid);
+          if (child != NULL)
+            sema_down (&child->wait);
+          int status = pc->exit_status;
           list_remove (e);
           palloc_free_page (pc);
           return status;
         }
     }
-  return status;
+  return -1;
 }
 
 /* Free the current process's resources. */
@@ -211,7 +212,7 @@ process_set_exit_status (int status)
 }
 
 /* Adds FILE to the current process's list. The file descriptor is
-   returned on success. */
+   returned on success, or -1 if the file cannot be added. */
 int
 process_add_file (struct file *file)
 {
@@ -220,9 +221,14 @@ process_add_file (struct file *file)
   int fd = allocate_fd ();
 
   pf = palloc_get_page (0);
-  pf->fd = fd;
-  pf->file = file;
-  list_push_front (&cur->file_list, &pf->elem);
+  if (pf == NULL)
+    fd = -1;
+  else
+    {
+      pf->fd = fd;
+      pf->file = file;
+      list_push_front (&cur->file_list, &pf->elem);
+    }
 
   return fd;
 }
