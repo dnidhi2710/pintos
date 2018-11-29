@@ -6,6 +6,7 @@
 #include <stdint.h>
 #ifdef USERPROG
 #include "filesys/file.h"
+#include "threads/synch.h"
 #endif
 
 /* States in a thread's life cycle. */
@@ -99,7 +100,10 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-    struct list file_list;              /* Open file list. */
+    struct thread *parent;              /* Parent thread. */
+    struct list child_list;             /* Child list. */
+    struct semaphore wait;              /* Up'd when the process exits. */
+    struct list file_list;              /* File list. */
 #endif
 
     /* Owned by thread.c. */
@@ -133,6 +137,8 @@ void thread_yield (void);
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
+
+struct thread *thread_get (tid_t);
 
 int thread_get_priority (void);
 void thread_set_priority (int);

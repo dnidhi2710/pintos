@@ -18,7 +18,6 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "devices/timer.h"
 
 static thread_func start_process NO_RETURN;
 static int allocate_fd (void);
@@ -47,14 +46,26 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (s, file_name, PGSIZE);
 
-  /* The first token is the executable program file name. */
+  /* The first token is the executable file name. */
   token = strtok_r (s, " ", &save_ptr);
+
+  /* Make sure the executable file exists. */
+  struct file *f = filesys_open (token);
+  if (f == NULL)
+    return TID_ERROR;
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
   palloc_free_page (s);
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+    palloc_free_page (fn_copy);
+  else
+    {
+      struct process_child *pc = palloc_get_page (0);
+      pc->child_tid = tid;
+      pc->exit_status = -1;
+      list_push_front (&thread_current ()->child_list, &pc->elem);
+    }
   return tid;
 }
 
@@ -94,15 +105,28 @@ start_process (void *file_name_)
    exception), returns -1.  If TID is invalid or if it was not a
    child of the calling process, or if process_wait() has already
    been successfully called for the given TID, returns -1
-   immediately, without waiting.
-
-   This function will be implemented in problem 2-2.  For now, it
-   does nothing. */
+   immediately, without waiting. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  timer_sleep(100); // A terrible, horrible, no good, very bad hack.
-  return 0;         // Properly implement at earliest convenience!
+  struct thread *cur = thread_current ();
+  struct list_elem *e = list_head (&cur->child_list);
+  struct process_child *pc;
+  int status = -1;
+
+  while ((e = list_next (e)) != list_end (&cur->child_list)) 
+    {
+      pc = list_entry(e, struct process_child, elem);
+      if (pc->child_tid == child_tid)
+        {
+          sema_down (&thread_get (child_tid)->wait);
+          status = pc->exit_status;
+          list_remove (e);
+          palloc_free_page (pc);
+          return status;
+        }
+    }
+  return status;
 }
 
 /* Free the current process's resources. */
@@ -110,6 +134,7 @@ void
 process_exit (void)
 {
   struct thread *cur = thread_current ();
+  struct process_child *pc;
   struct process_file *pf;
   uint32_t *pd;
 
@@ -130,6 +155,14 @@ process_exit (void)
       pagedir_destroy (pd);
     }
 
+  /* Clear the current process's child list. */
+  while (!list_empty (&cur->child_list))
+    {
+      struct list_elem *e = list_pop_front (&cur->child_list);
+      pc = list_entry(e, struct process_child, elem);
+      palloc_free_page (pc);
+    }
+
   /* Clear the current process's file list. */
   while (!list_empty (&cur->file_list))
     {
@@ -138,6 +171,9 @@ process_exit (void)
       file_close (pf->file);
       palloc_free_page (pf);
     }
+
+  /* Inform any waiting processes. */
+  sema_up (&cur->wait);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -154,6 +190,24 @@ process_activate (void)
   /* Set thread's kernel stack for use in processing
      interrupts. */
   tss_update ();
+}
+
+/* Sets the current process's exit status in its parent's child list. */
+void
+process_set_exit_status (int status)
+{
+  struct thread *cur = thread_current ();
+  struct list_elem *e = list_head (&cur->parent->child_list);
+  struct process_child *pc;
+
+  while ((e = list_next (e)) != list_end (&cur->parent->child_list)) 
+    {
+      pc = list_entry(e, struct process_child, elem);
+      if (pc->child_tid == cur->tid)
+        {
+          pc->exit_status = status;
+        }
+    }
 }
 
 /* Adds FILE to the current process's list. The file descriptor is
@@ -317,7 +371,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   strlcpy (s, file_name, PGSIZE);
 
-  /* The first token is the executable program file name. */
+  /* The first token is the executable file name. */
   token = strtok_r (s, " ", &save_ptr);
 
   /* Allocate and activate page directory. */

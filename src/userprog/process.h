@@ -5,18 +5,28 @@
 #include "filesys/file.h"
 #include "threads/thread.h"
 
+struct process_child
+  {
+    tid_t child_tid;                /* Child thread identifier. */
+    struct lock load_lock;          /* Lock to synchronize loading processes. */
+    int exit_status;                /* Exit status. */
+    struct list_elem elem;          /* List element. */
+  };
+
 /* A file owned by an user process. */
 struct process_file
   {
-    int fd;                             /* File descriptor. */
-    struct file *file;                  /* File struct. */
-    struct list_elem elem;              /* List element. */
+    int fd;                         /* File descriptor. */
+    struct file *file;              /* File struct. */
+    struct list_elem elem;          /* List element. */
   };
 
 tid_t process_execute (const char *file_name);
 int process_wait (tid_t);
 void process_exit (void);
 void process_activate (void);
+
+void process_set_exit_status (int);
 
 int process_add_file (struct file *);
 struct file *process_remove_file (int fd);

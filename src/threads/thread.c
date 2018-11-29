@@ -182,6 +182,7 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  t->parent = thread_current ();
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -331,6 +332,23 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+/* Gets the thread identified by TID.
+   Returns NULL if the identifier is invalid. */
+struct thread *
+thread_get (tid_t tid)
+{
+  struct list_elem *e = list_head (&all_list);
+  struct thread *t;
+
+  while ((e = list_next (e)) != list_end (&all_list))
+    {
+      t = list_entry(e, struct thread, allelem);
+      if (t->tid == tid && t->status != THREAD_DYING)
+        return t;
+    }
+  return NULL;
+}
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
@@ -465,6 +483,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
 #ifdef USERPROG
+  list_init (&t->child_list);
+  sema_init (&t->wait, 0);
   list_init (&t->file_list);
 #endif
 
