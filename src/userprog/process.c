@@ -15,7 +15,6 @@
 #include "threads/flags.h"
 #include "threads/init.h"
 #include "threads/interrupt.h"
-#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -64,14 +63,9 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {
-  struct thread *cur = thread_current ();
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
-
-  /* Initialize the process's file list. */
-  cur->file_list = malloc (sizeof (cur->file_list));
-  list_init (cur->file_list);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -136,15 +130,14 @@ process_exit (void)
       pagedir_destroy (pd);
     }
 
-  /* Close and free the current process's opened files. */
-  while (!list_empty (cur->file_list))
+  /* Clear the current process's file list. */
+  while (!list_empty (&cur->file_list))
     {
-      struct list_elem *e = list_pop_front (cur->file_list);
+      struct list_elem *e = list_pop_front (&cur->file_list);
       pf = list_entry(e, struct process_file, elem);
       file_close (pf->file);
-      free (pf);
+      palloc_free_page (pf);
     }
-  free (cur->file_list);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -172,10 +165,10 @@ process_add_file (struct file *file)
   struct process_file *pf;
   int fd = allocate_fd ();
 
-  pf = malloc (sizeof (*pf));
+  pf = palloc_get_page (0);
   pf->fd = fd;
   pf->file = file;
-  list_push_front (cur->file_list, &pf->elem);
+  list_push_front (&cur->file_list, &pf->elem);
 
   return fd;
 }
@@ -186,18 +179,18 @@ struct file *
 process_remove_file (int fd)
 {
   struct thread *cur = thread_current ();
-  struct list_elem *e = list_head (cur->file_list);
+  struct list_elem *e = list_head (&cur->file_list);
   struct process_file *pf;
   struct file *f;
 
-  while ((e = list_next (e)) != list_end (cur->file_list)) 
+  while ((e = list_next (e)) != list_end (&cur->file_list)) 
     {
       pf = list_entry(e, struct process_file, elem);
       if (pf->fd == fd)
         {
           f = pf->file;
           list_remove (e);
-          free (pf);
+          palloc_free_page (pf);
           return f;
         }
     }
@@ -210,10 +203,10 @@ struct file *
 process_get_file (int fd)
 {
   struct thread *cur = thread_current ();
-  struct list_elem *e = list_head (cur->file_list);
+  struct list_elem *e = list_head (&cur->file_list);
   struct process_file *pf;
 
-  while ((e = list_next (e)) != list_end (cur->file_list))
+  while ((e = list_next (e)) != list_end (&cur->file_list))
     {
       pf = list_entry(e, struct process_file, elem);
       if (pf->fd == fd)
@@ -313,7 +306,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
-  struct process_file *pf;
   off_t file_ofs;
   char *token, *s, *save_ptr;
   bool success = false;
@@ -428,12 +420,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   /* We arrive here whether the load is successful or not. */
   palloc_free_page (s);
   if (success)
-    {
-      pf = malloc (sizeof (*pf));
-      pf->fd = allocate_fd ();
-      pf->file = file;
-      list_push_front (t->file_list, &pf->elem);
-    }
+    process_add_file (file);
   else
     file_close (file);
   return success;
