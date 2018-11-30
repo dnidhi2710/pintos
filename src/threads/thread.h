@@ -100,10 +100,10 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-    struct thread *parent;              /* Parent thread. */
+    tid_t parent_tid;            /* Parent thread identifier. */
     struct list child_list;             /* Child list. */
-    struct semaphore wait;              /* Up'd when the process exits. */
     struct list file_list;              /* File list. */
+    struct semaphore wait;              /* Up'd when the process exits. */
 #endif
 
     /* Owned by thread.c. */

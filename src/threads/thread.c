@@ -182,7 +182,10 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-  t->parent = thread_current ();
+
+#ifdef USERPROG
+  t->parent_tid = thread_tid ();
+#endif
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -269,6 +272,23 @@ thread_current (void)
   return t;
 }
 
+/* Returns the thread identified by TID.
+   Returns NULL if the identifier is invalid. */
+struct thread *
+thread_get (tid_t tid)
+{
+  struct list_elem *e = list_head (&all_list);
+  struct thread *t;
+
+  while ((e = list_next (e)) != list_end (&all_list))
+    {
+      t = list_entry(e, struct thread, allelem);
+      if (t->tid == tid && t->status != THREAD_DYING)
+        return t;
+    }
+  return NULL;
+}
+
 /* Returns the running thread's tid. */
 tid_t
 thread_tid (void) 
@@ -330,23 +350,6 @@ thread_foreach (thread_action_func *func, void *aux)
       struct thread *t = list_entry (e, struct thread, allelem);
       func (t, aux);
     }
-}
-
-/* Gets the thread identified by TID.
-   Returns NULL if the identifier is invalid. */
-struct thread *
-thread_get (tid_t tid)
-{
-  struct list_elem *e = list_head (&all_list);
-  struct thread *t;
-
-  while ((e = list_next (e)) != list_end (&all_list))
-    {
-      t = list_entry(e, struct thread, allelem);
-      if (t->tid == tid && t->status != THREAD_DYING)
-        return t;
-    }
-  return NULL;
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -484,8 +487,8 @@ init_thread (struct thread *t, const char *name, int priority)
 
 #ifdef USERPROG
   list_init (&t->child_list);
-  sema_init (&t->wait, 0);
   list_init (&t->file_list);
+  sema_init (&t->wait, 0);
 #endif
 
   old_level = intr_disable ();

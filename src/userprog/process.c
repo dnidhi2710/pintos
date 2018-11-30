@@ -198,15 +198,20 @@ void
 process_set_exit_status (int status)
 {
   struct thread *cur = thread_current ();
-  struct list_elem *e = list_head (&cur->parent->child_list);
+  struct thread *parent = thread_get (cur->parent_tid);
+  struct list_elem *e;
   struct process_child *pc;
 
-  while ((e = list_next (e)) != list_end (&cur->parent->child_list)) 
+  if (parent != NULL)
     {
-      pc = list_entry(e, struct process_child, elem);
-      if (pc->child_tid == cur->tid)
+      e = list_head (&parent->child_list);
+      while ((e = list_next (e)) != list_end (&parent->child_list)) 
         {
-          pc->exit_status = status;
+          pc = list_entry(e, struct process_child, elem);
+          if (pc->child_tid == cur->tid)
+            {
+              pc->exit_status = status;
+            }
         }
     }
 }

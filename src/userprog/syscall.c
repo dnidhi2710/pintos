@@ -307,7 +307,7 @@ close (int fd)
 static void
 check_ptr (const void *ptr)
 {
-  if (is_kernel_vaddr(ptr))
+  if (is_kernel_vaddr (ptr))
     exit (-1);
 
   if (pagedir_get_page (thread_current ()->pagedir, ptr) == NULL)
