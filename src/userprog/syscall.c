@@ -119,7 +119,7 @@ halt (void)
 void
 exit (int status)
 {
-  process_set_exit_status (status);
+  process_set_status (status);
   printf ("%s: exit(%d)\n", thread_current ()->name, status);
   thread_exit ();
 }

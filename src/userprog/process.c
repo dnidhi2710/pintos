@@ -30,6 +30,8 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
+  struct thread *cur = thread_current ();
+  struct thread *child;
   char *fn_copy, *token, *s, *save_ptr;
   tid_t tid;
 
@@ -54,18 +56,15 @@ process_execute (const char *file_name)
   if (f == NULL)
     return TID_ERROR;
 
-  /* Create a new thread to execute FILE_NAME. */
+  /* Create a new thread to execute FILE_NAME and wait for it to load. */
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
-  palloc_free_page (s);
-  if (tid == TID_ERROR)
-    palloc_free_page (fn_copy);
+  child = thread_get (tid);
+  if (child != NULL)
+    sema_down (&child->load);
   else
-    {
-      struct process_child *pc = palloc_get_page (0);
-      pc->child_tid = tid;
-      pc->exit_status = -1;
-      list_push_front (&thread_current ()->child_list, &pc->elem);
-    }
+    palloc_free_page (fn_copy);
+
+  palloc_free_page (s);
   return tid;
 }
 
@@ -74,6 +73,8 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {
+  struct thread *cur = thread_current ();
+  struct thread *parent = thread_get (cur->parent_tid);
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
@@ -85,10 +86,22 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
-  /* If load failed, quit. */
+  /* If load succeeded, add the process to the parent's child list. */
   palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
+  if (success)
+    {
+      struct process_child *pc = palloc_get_page (0);
+      pc->child_tid = cur->tid;
+      pc->status = -1;
+      list_push_front (&parent->child_list, &pc->elem);
+      sema_up (&cur->load);
+    }
+  /* If load failed, quit. */
+  else
+    {
+      sema_up (&cur->load);
+      thread_exit ();
+    }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -121,7 +134,7 @@ process_wait (tid_t child_tid)
           struct thread *child = thread_get (child_tid);
           if (child != NULL)
             sema_down (&child->wait);
-          int status = pc->exit_status;
+          int status = pc->status;
           list_remove (e);
           palloc_free_page (pc);
           return status;
@@ -195,7 +208,7 @@ process_activate (void)
 
 /* Sets the current process's exit status in its parent's child list. */
 void
-process_set_exit_status (int status)
+process_set_status (int status)
 {
   struct thread *cur = thread_current ();
   struct thread *parent = thread_get (cur->parent_tid);
@@ -209,9 +222,7 @@ process_set_exit_status (int status)
         {
           pc = list_entry(e, struct process_child, elem);
           if (pc->child_tid == cur->tid)
-            {
-              pc->exit_status = status;
-            }
+            pc->status = status;
         }
     }
 }
