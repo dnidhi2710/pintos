@@ -31,7 +31,6 @@ tid_t
 process_execute (const char *file_name) 
 {
   struct thread *cur = thread_current ();
-  struct thread *child;
   char *fn_copy, *token, *s, *save_ptr;
   tid_t tid;
 
@@ -51,21 +50,36 @@ process_execute (const char *file_name)
   /* The first token is the executable file name. */
   token = strtok_r (s, " ", &save_ptr);
 
-  /* Make sure the executable file exists. */
-  struct file *f = filesys_open (token);
-  if (f == NULL)
-    return TID_ERROR;
-
   /* Create a new thread to execute FILE_NAME and wait for it to load. */
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
-  child = thread_get (tid);
-  if (child != NULL)
-    sema_down (&child->load);
-  else
-    palloc_free_page (fn_copy);
-
   palloc_free_page (s);
-  return tid;
+
+  struct thread *child = thread_get (tid);
+  if (child == NULL)
+    {
+      palloc_free_page (fn_copy);
+      return TID_ERROR;
+    }
+
+  sema_down (&child->load);
+
+  /* Make sure the child process loaded successfully. */
+  struct list_elem *e = list_head (&cur->child_list);
+  while ((e = list_next (e)) != list_end (&cur->child_list)) 
+    {
+      struct process_child *pc = list_entry (e, struct process_child, elem);
+      if (pc->child_tid == tid)
+        {
+          if (pc->loaded)
+            return tid;
+
+          list_remove (e);
+          palloc_free_page (pc);
+          return TID_ERROR;
+        }
+    }
+
+  NOT_REACHED ();
 }
 
 /* A thread function that loads a user process and starts it
@@ -74,7 +88,6 @@ static void
 start_process (void *file_name_)
 {
   struct thread *cur = thread_current ();
-  struct thread *parent = thread_get (cur->parent_tid);
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
@@ -85,23 +98,22 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
-
-  /* If load succeeded, add the process to the parent's child list. */
   palloc_free_page (file_name);
-  if (success)
-    {
-      struct process_child *pc = palloc_get_page (0);
-      pc->child_tid = cur->tid;
-      pc->status = -1;
-      list_push_front (&parent->child_list, &pc->elem);
-      sema_up (&cur->load);
-    }
+
+  /* Add the process to the parent's child list. */
+  struct process_child *pc = palloc_get_page (0);
+  if (pc == NULL)
+    thread_exit ();
+  pc->child_tid = cur->tid;
+  pc->loaded = success;
+  pc->status = -1;
+  list_push_front (&thread_get (cur->parent_tid)->child_list, &pc->elem);
+
+  sema_up (&cur->load);
+
   /* If load failed, quit. */
-  else
-    {
-      sema_up (&cur->load);
-      thread_exit ();
-    }
+  if (!success)
+    thread_exit ();
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -123,12 +135,11 @@ int
 process_wait (tid_t child_tid) 
 {
   struct thread *cur = thread_current ();
-  struct list_elem *e = list_head (&cur->child_list);
-  struct process_child *pc;
 
+  struct list_elem *e = list_head (&cur->child_list);
   while ((e = list_next (e)) != list_end (&cur->child_list)) 
     {
-      pc = list_entry(e, struct process_child, elem);
+      struct process_child *pc = list_entry (e, struct process_child, elem);
       if (pc->child_tid == child_tid)
         {
           struct thread *child = thread_get (child_tid);
@@ -148,9 +159,27 @@ void
 process_exit (void)
 {
   struct thread *cur = thread_current ();
-  struct process_child *pc;
-  struct process_file *pf;
   uint32_t *pd;
+
+  /* Clear the current process's child list. */
+  while (!list_empty (&cur->child_list))
+    {
+      struct list_elem *e = list_pop_front (&cur->child_list);
+      struct process_child *pc = list_entry (e, struct process_child, elem);
+      palloc_free_page (pc);
+    }
+
+  /* Clear the current process's file list. */
+  while (!list_empty (&cur->file_list))
+    {
+      struct list_elem *e = list_pop_front (&cur->file_list);
+      struct process_file *pf = list_entry (e, struct process_file, elem);
+      file_close (pf->file);
+      palloc_free_page (pf);
+    }
+
+  /* Inform any waiting processes. */
+  sema_up (&cur->wait);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -168,26 +197,6 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-
-  /* Clear the current process's child list. */
-  while (!list_empty (&cur->child_list))
-    {
-      struct list_elem *e = list_pop_front (&cur->child_list);
-      pc = list_entry(e, struct process_child, elem);
-      palloc_free_page (pc);
-    }
-
-  /* Clear the current process's file list. */
-  while (!list_empty (&cur->file_list))
-    {
-      struct list_elem *e = list_pop_front (&cur->file_list);
-      pf = list_entry(e, struct process_file, elem);
-      file_close (pf->file);
-      palloc_free_page (pf);
-    }
-
-  /* Inform any waiting processes. */
-  sema_up (&cur->wait);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -212,15 +221,13 @@ process_set_status (int status)
 {
   struct thread *cur = thread_current ();
   struct thread *parent = thread_get (cur->parent_tid);
-  struct list_elem *e;
-  struct process_child *pc;
 
   if (parent != NULL)
     {
-      e = list_head (&parent->child_list);
+      struct list_elem *e = list_head (&parent->child_list);
       while ((e = list_next (e)) != list_end (&parent->child_list)) 
         {
-          pc = list_entry(e, struct process_child, elem);
+          struct process_child *pc = list_entry (e, struct process_child, elem);
           if (pc->child_tid == cur->tid)
             pc->status = status;
         }
@@ -233,20 +240,16 @@ int
 process_add_file (struct file *file)
 {
   struct thread *cur = thread_current ();
-  struct process_file *pf;
-  int fd = allocate_fd ();
 
-  pf = palloc_get_page (0);
+  struct process_file *pf = palloc_get_page (0);
   if (pf == NULL)
-    fd = -1;
-  else
-    {
-      pf->fd = fd;
-      pf->file = file;
-      list_push_front (&cur->file_list, &pf->elem);
-    }
+    return -1;
 
-  return fd;
+  pf->fd = allocate_fd ();
+  pf->file = file;
+  list_push_front (&cur->file_list, &pf->elem);
+
+  return pf->fd;
 }
 
 /* Removes the file identified by FD from the current process's list.
@@ -255,16 +258,14 @@ struct file *
 process_remove_file (int fd)
 {
   struct thread *cur = thread_current ();
-  struct list_elem *e = list_head (&cur->file_list);
-  struct process_file *pf;
-  struct file *f;
 
+  struct list_elem *e = list_head (&cur->file_list);
   while ((e = list_next (e)) != list_end (&cur->file_list)) 
     {
-      pf = list_entry(e, struct process_file, elem);
+      struct process_file *pf = list_entry (e, struct process_file, elem);
       if (pf->fd == fd)
         {
-          f = pf->file;
+          struct file *f = pf->file;
           list_remove (e);
           palloc_free_page (pf);
           return f;
@@ -279,12 +280,11 @@ struct file *
 process_get_file (int fd)
 {
   struct thread *cur = thread_current ();
-  struct list_elem *e = list_head (&cur->file_list);
-  struct process_file *pf;
 
+  struct list_elem *e = list_head (&cur->file_list);
   while ((e = list_next (e)) != list_end (&cur->file_list))
     {
-      pf = list_entry(e, struct process_file, elem);
+      struct process_file *pf = list_entry (e, struct process_file, elem);
       if (pf->fd == fd)
         return pf->file;
     }
@@ -410,6 +410,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       goto done; 
     }
   file_deny_write (file);
+  palloc_free_page (s);
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -494,7 +495,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  palloc_free_page (s);
   if (success)
     process_add_file (file);
   else

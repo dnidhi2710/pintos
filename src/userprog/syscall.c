@@ -17,13 +17,13 @@ static void syscall_handler (struct intr_frame *);
 static void check_ptr (const void *);
 
 /* Lock to synchronize access to the file system. */
-static struct lock fs_lock;
+static struct lock filesys_lock;
 
 void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
-  lock_init (&fs_lock);
+  lock_init (&filesys_lock);
 }
 
 static void
@@ -131,9 +131,9 @@ exec (const char *cmd_line)
 
   pid_t pid = -1;
 
-  lock_acquire (&fs_lock);
+  lock_acquire (&filesys_lock);
   pid = process_execute (cmd_line);
-  lock_release (&fs_lock);
+  lock_release (&filesys_lock);
 
   return pid;
 }
@@ -151,9 +151,9 @@ create (const char *file, unsigned initial_size)
 
   bool success = false;
 
-  lock_acquire (&fs_lock);
+  lock_acquire (&filesys_lock);
   success = filesys_create (file, initial_size);  
-  lock_release (&fs_lock);
+  lock_release (&filesys_lock);
 
   return success;
 }
@@ -165,9 +165,9 @@ remove (const char *file)
 
   bool success = false;
 
-  lock_acquire (&fs_lock);
+  lock_acquire (&filesys_lock);
   success = filesys_remove (file);
-  lock_release (&fs_lock);
+  lock_release (&filesys_lock);
 
   return success;
 }
@@ -179,13 +179,13 @@ open (const char *file)
 
   int fd = -1;
 
-  lock_acquire (&fs_lock);
+  lock_acquire (&filesys_lock);
   struct file *f = filesys_open (file);
   if (f != NULL)
     {
       fd = process_add_file (f);
     }
-  lock_release (&fs_lock);
+  lock_release (&filesys_lock);
 
   return fd;
 }
@@ -195,11 +195,11 @@ filesize (int fd)
 {
   int size = 0;
 
-  lock_acquire (&fs_lock); 
+  lock_acquire (&filesys_lock); 
   struct file *f = process_get_file (fd);
   if (f != NULL)
     size = file_length (f);
-  lock_release (&fs_lock);
+  lock_release (&filesys_lock);
 
   return size;
 }
@@ -210,7 +210,7 @@ read (int fd, void *buffer, unsigned size)
   check_ptr (buffer);
   char *ptr = (char *) buffer;
   for (unsigned i = 0; i < size; i++)
-    check_ptr(ptr++);
+    check_ptr (ptr++);
 
   int bytes = 0;
 
@@ -229,11 +229,11 @@ read (int fd, void *buffer, unsigned size)
 
   if (fd > 1)
     {
-      lock_acquire (&fs_lock); 
+      lock_acquire (&filesys_lock); 
       struct file *f = process_get_file (fd);
       if (f != NULL)
         bytes = file_read (f, buffer, size);
-      lock_release (&fs_lock);
+      lock_release (&filesys_lock);
     }
 
   return bytes;
@@ -245,7 +245,7 @@ write (int fd, const void *buffer, unsigned size)
   check_ptr (buffer);
   char *ptr = (char *) buffer;
   for (unsigned i = 0; i < size; i++)
-    check_ptr(ptr++);
+    check_ptr (ptr++);
 
   int bytes = 0;
 
@@ -257,11 +257,11 @@ write (int fd, const void *buffer, unsigned size)
 
   if (fd > 1)
     {
-      lock_acquire (&fs_lock); 
+      lock_acquire (&filesys_lock); 
       struct file *f = process_get_file (fd);
       if (f != NULL)
         bytes = file_write (f, buffer, size);
-      lock_release (&fs_lock);
+      lock_release (&filesys_lock);
     }
 
   return bytes;
@@ -270,11 +270,11 @@ write (int fd, const void *buffer, unsigned size)
 void
 seek (int fd, unsigned position)
 {
-  lock_acquire (&fs_lock); 
+  lock_acquire (&filesys_lock); 
   struct file *f = process_get_file (fd);
   if (f != NULL)
     file_seek (f, position);
-  lock_release (&fs_lock);
+  lock_release (&filesys_lock);
 }
 
 unsigned
@@ -282,11 +282,11 @@ tell (int fd)
 {
   int bytes = 0;
 
-  lock_acquire (&fs_lock); 
+  lock_acquire (&filesys_lock); 
   struct file *f = process_get_file (fd);
   if (f != NULL)
     bytes = file_tell (f);
-  lock_release (&fs_lock);
+  lock_release (&filesys_lock);
 
   return bytes;
 }
@@ -294,11 +294,11 @@ tell (int fd)
 void
 close (int fd)
 {
-  lock_acquire (&fs_lock); 
+  lock_acquire (&filesys_lock); 
   struct file *f = process_remove_file (fd);
   if (f != NULL)
     file_close (f);
-  lock_release (&fs_lock);
+  lock_release (&filesys_lock);
 }
 
 /* Ensures that the user-provided pointer is within the user
