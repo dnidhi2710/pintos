@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -24,6 +25,11 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* Nice values for advanced scheduler. */
+#define NICE_MIN -20
+#define NICE_DEFAULT 0
+#define NICE_MAX 20
+#define RECENT_CPU_INITIAL 0
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -88,12 +94,18 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+    int donated_priority;     /* Donated priority. */
+    int previous_priority;          /*previous priority*/
+    int original_priority;
     int64_t sleep_ticks;                /* Sleep timer ticks. */
     struct list_elem allelem;           /* List element for all threads list. */
-
+    int nice;                           /* Nice value for mlfqs. */
+    int recent_cpu;                     /* CPU time calculation for mlfqs. */
+    int load_avg;                       /* Load average counter*/
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-
+   // struct list_elem donation_elem;
+   // struct list donations;
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -103,6 +115,21 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
   };
 
+  struct semaphore1 
+  {
+    unsigned value;             /* Current value. */
+    struct list waiters;        /* List of waiting threads. */
+  };
+
+  struct donation{
+    struct lock *lock;
+    char donor[16];
+    char donee[16];
+    int donated_priority;
+    int original_priority;
+    int previous_priority;
+    struct list_elem elem;
+  };
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -140,6 +167,11 @@ void thread_set_priority (int);
 int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
+void calculate_recent_cpu(struct thread *cur, void *aux UNUSED);
+void calculate_mlfqs_priority(struct thread *cur, void *aux UNUSED);
 int thread_get_load_avg (void);
-
+void thread_preempt(void);
+void wakeup_next_waiting(struct semaphore1 * );
+void check_for_donation(struct lock *);
+void revert_donation(struct lock *);
 #endif /* threads/thread.h */

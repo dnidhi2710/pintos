@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/fixed-point.h"
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -168,8 +169,30 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  thread_wake (timer_ticks ());
-  thread_tick ();
+  thread_wake (timer_ticks ()); 
+  
+  /* For MLFQS implementation. */
+
+  if (thread_mlfqs)
+  {
+    struct thread *cur;
+    cur = thread_current ();
+    
+    if (cur->status == THREAD_RUNNING)
+    {
+      cur->recent_cpu = ADD_FP_AND_INT(cur->recent_cpu, 1);
+    }
+    if (ticks % 100 == 0)
+    {
+      calculate_load_avg ();
+      thread_calculate_recent_cpu_all ();
+    }
+    if (ticks % 4 == 0)
+    {
+      calculate_mlfqs_priority_for_all ();
+    }
+  }
+  thread_tick();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
